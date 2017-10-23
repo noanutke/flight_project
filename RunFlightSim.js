@@ -1,7 +1,7 @@
 // RunFlightSim.js
 //
 // This script runs a flight simulator session, including creating and destroying 
-// objects (rings), starting and stopping the eyetracker and logger, and sending various 
+// objects (233s), starting and stopping the eyetracker and logger, and sending various 
 // messages to the log and EEG (via the Logger/eyelink scripts).
 // - This script places an object in each of the locations designated bin a text file.
 // - This script creates a ControlFlight script and passes speed/control parameters to it
@@ -115,8 +115,10 @@ private var flightScript; // the script that allows the subject to control the f
 private var portIsSync = false; //is parallel port sending Constants.SYNC?
 private var syncTime = 0.0; //  the next time when the sync pulse should be sent
 private var trialEndTime = Mathf.Infinity; //the time when the trial should end
-private var RingArray: Array;
-private var nextRingBounds: Bounds;
+private var UpperRingArray: Array;
+private var LowerRingArray: Array;
+private var nextUpperRingBounds: Bounds;
+private var nextLowerRingBounds: Bounds;
 private var iNextRing = 0;
 private var ringAccuracy = new Array();
 
@@ -210,24 +212,42 @@ function Start()
 	eyelinkScript.write("eyelink.gain_y: " + gain_y);
 	eyelinkScript.write("----- END SESSION PARAMETERS -----");
 
- 	//------- RING LOCATIONS 	
+	 //------- UPPER RING LOCATIONS 	
 	// Read in ring locations from text file
- 	var ringInfo = ReadInPoints(routeFilename);
- 	ringPositions = ringInfo[0];
- 	ringWidths = ringInfo[1];
+ 	var upperRingInfo = ReadInPoints(routeFilename, 100.00);
+ 	upperRingPositions = upperRingInfo[0];
+ 	ringWidths = upperRingInfo[1];
  	
 	// Put rings in scene 	
-	var centerWidths2 = new Array();
+	var upperCenterWidths2 = new Array();
 	for(i=0;i<ringWidths.length;i++)
 	{	
-		centerWidths2.Push(10.0);
+		upperCenterWidths2.Push(10.0);
 	}
-	var centerWidths: float[] = centerWidths2.ToBuiltin(float) as float[]; 
- 	RingArray = PlaceRings(ringPrefab,ringPositions, ringWidths, ringWidths, ringDepth, true);
- 	// RingArray = PlaceRings(ringPrefab,ringPositions, ringWidths, ringWidths, ringDepth, areAllRingsVisible);
+
+ 	//------- LOWER RING LOCATIONS 	
+	// Read in ring locations from text file
+ 	var lowerRingInfo = ReadInPoints(routeFilename, -100.00);
+ 	lowerRingPositions = lowerRingInfo[0];
+ 	//lowerRingWidths = lowerRingInfo[1];
+ 	
+	// Put rings in scene 	
+	var lowerCenterWidths2 = new Array();
+	for(i=0;i<ringWidths.length;i++)
+	{	
+		lowerCenterWidths2.Push(10.0);
+	}
+
+	var blue = new Color(0,0,255,0);
+	var red = new Color(255,0,0,0);
+	var centerWidths: float[] = upperCenterWidths2.ToBuiltin(float) as float[]; 
+ 	UpperRingArray = PlaceRings(centerPrefab,upperRingPositions, ringWidths, ringWidths, ringDepth, true);
+ 	LowerRingArray = PlaceRings(ringPrefab,lowerRingPositions, ringWidths, ringWidths, ringDepth, true);
+ 	// RingArray = PlaceRings(ringPrefab,ringPositions, 110, ringWidths, ringDepth, areAllRingsVisible);
  	//CenterArray = PlaceRings(centerPrefab,ringPositions, centerWidths, centerWidths, centerDepth, areAllRingsVisible);
  	// initialize nextRingBounds
- 	nextRingBounds = ObjectInfo.ObjectBounds(RingArray[iNextRing].gameObject);
+ 	nextUpperRingBounds = ObjectInfo.ObjectBounds(UpperRingArray[iNextRing].gameObject);
+ 	nextLowerRingBounds = ObjectInfo.ObjectBounds(LowerRingArray[iNextRing].gameObject);
 
  	//------- FLIGHT CONTROLS 	
  	// pass parameters to flight control script
@@ -301,44 +321,44 @@ function Update() {
 	// --------------------------------------------------------
 
 	// Changed, FJ, 2016/08/04, Send plane position, HMD orientation via LSL
-	lslBCIInputScript.sendFlightParams ( transform.position.z, transform.position.y, nextRingBounds.center.z, nextRingBounds.min.y, nextRingBounds.max.y, VRRotation[0], VRRotation[1], VRRotation[2] );
+	lslBCIInputScript.sendFlightParams ( transform.position.z, transform.position.y, nextUpperRingBounds.center.z, nextUpperRingBounds.min.y, nextUpperRingBounds.max.y, VRRotation[0], VRRotation[1], VRRotation[2] );
 
 	// Check if subject has passed the next ring
-	if (transform.position.z > nextRingBounds.center.z) 
+	if (transform.position.z > nextUpperRingBounds.center.z) 
 	{
-		if ( iNextRing <= ( RingArray.length-1 ) )
+		if ( iNextRing <= ( UpperRingArray.length-1 ) )
 		{
 			// CHANGED, FJ, 2015-05-11
 			// Inject Marker into the data stream whenever the plane passes a ring.
 			// Markers are written via LSL_BCI_Input, which uses the framework labstreaminglayer.
-			lslBCIInputScript.setMarker ("RingPassed_Size_" + Mathf.Abs(nextRingBounds.max.y - nextRingBounds.min.y));
+			lslBCIInputScript.setMarker ("RingPassed_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y));
 
-			lslBCIInputScript.setMarker ("RingPassed_Size_" + Mathf.Abs(nextRingBounds.max.y - nextRingBounds.min.y) + "_Cond_" + expCondition );
+			lslBCIInputScript.setMarker ("RingPassed_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y) + "_Cond_" + expCondition );
 
 			lslBCIInputScript.setMarker ("RingPassed_Cond_" + expCondition );
 		}
 
 		// ADDED, FJ, 2016-08-10
-		if ((transform.position.y < nextRingBounds.min.y || transform.position.y > nextRingBounds.max.y ) )
+		if ((transform.position.y < nextUpperRingBounds.min.y || transform.position.y > nextUpperRingBounds.max.y ) )
 		{
-			lslBCIInputScript.setMarker ("Fail_Size_" + Mathf.Abs(nextRingBounds.max.y - nextRingBounds.min.y));
+			lslBCIInputScript.setMarker ("Fail_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y));
 
-			lslBCIInputScript.setMarker ("Fail_Size_" + Mathf.Abs(nextRingBounds.max.y - nextRingBounds.min.y) + "_Cond_" + expCondition );
+			lslBCIInputScript.setMarker ("Fail_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y) + "_Cond_" + expCondition );
 
 			lslBCIInputScript.setMarker ("Fail_Cond_" + expCondition );
 		}
 						
 		// if we failed to go through the ring, or went through the last ring, end the level.
-		if ((transform.position.y < nextRingBounds.min.y || transform.position.y > nextRingBounds.max.y || iNextRing==RingArray.length-1) && (isPractice == false)) {
+		if ((transform.position.y < nextUpperRingBounds.min.y || transform.position.y > nextUpperRingBounds.max.y || iNextRing==UpperRingArray.length-1) && (isPractice == false)) {
 			EndLevel();
 			Application.LoadLevel("Loader"); //Go back to the Loader Scene
 			return; //stop executing Update (to avoid, e.g., destroying things twice
 		// if we went through the ring, increment the ring number
 		} else {
-			ringAccuracy.push(Mathf.Abs(transform.position.y - nextRingBounds.center.y)*200/ringWidths[iNextRing]);
+			ringAccuracy.push(Mathf.Abs(transform.position.y - nextUpperRingBounds.center.y)*200/ringWidths[iNextRing]);
 			iNextRing++; // increment the ring number
-			ChangeVisibility(RingArray[iNextRing],true);
-			nextRingBounds = ObjectInfo.ObjectBounds(RingArray[iNextRing].gameObject); // get new ring bounds
+			ChangeVisibility(UpperRingArray[iNextRing],true);
+			nextUpperRingBounds = ObjectInfo.ObjectBounds(UpperRingArray[iNextRing].gameObject); // get new ring bounds
 		}
 	}
 }
@@ -354,7 +374,7 @@ function sendMarkerWithRingSize ( sMarkerName : String )
 	// CHANGED, FJ, 2015-05-11
 	// Annotate the size of the next ring to the marker string passed as argument
 	// and inject the resulting marker into the data stream via the labstreaminglayer framework.
-	lslBCIInputScript.setMarker ( sMarkerName + "_Size_" + Mathf.Abs(nextRingBounds.max.y - nextRingBounds.min.y));
+	lslBCIInputScript.setMarker ( sMarkerName + "_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y));
 }
 
 
@@ -368,7 +388,7 @@ function EndLevel()
 	// --------------------------------------------------------
 
 	//Compute Performance
-	courseCompleted = ((iNextRing)*100/RingArray.length);
+	courseCompleted = ((iNextRing)*100/UpperRingArray.length);
 	
 	var sum = 0;
 	for (var i=0; i<ringAccuracy.length; i++) 
@@ -444,7 +464,7 @@ function OnApplicationQuit()
 //-----------------------//
 // Read in 3D points from MATLAB
 //-----------------------//
-function ReadInPoints(fileName: String) 
+function ReadInPoints(fileName: String, heightToAdd: float) 
 {
 	// set up
 	var txtPoints = new Array();
@@ -471,7 +491,7 @@ function ReadInPoints(fileName: String)
 	       	var widthString = valSegs[3];
 	       	// TRACING of raw (x,y,z)
 //	      	Debug.Log("xStr: " + xStr + ", yStr: " + yStr + ", zStr: " + zStr);
-	       	txtPoints.Push(Vector3(float.Parse(xStr),float.Parse(yStr),float.Parse(zStr)));
+	       	txtPoints.Push(Vector3(float.Parse(xStr),float.Parse(yStr)+heightToAdd,float.Parse(zStr)));
 	       	txtWidths.Push(float.Parse(widthString));
 		}
      }
@@ -490,8 +510,13 @@ function PlaceRings(prefabObj: Transform, positions: Vector3[], ringWidth: float
 	eyelinkScript.write("----- LOAD TRIAL -----");
 	AllRings = new Array();
 	for (i=0;i<positions.length;i++) {
-		eyelinkScript.write("Created Object # " + (i+1) + " Ring Ring Ring " + positions[i] + " (" + ringWidth[i] + ", " + ringHeight[i] + ", " + ringDepth + ", 0)"); //"Ring Ring Ring" indicates name/type/tag are all "Ring"
-		thisRing = Instantiate(prefabObj, positions[i], Quaternion.identity); // place ring in scene
+		//renderer = prefabObj.GetComponent('Renderer').material.color = color;
+		eyelinkScript.write("Created Object # " + (i+1) + " Ring Ring Ring " + positions[i] + " (" + ringWidths[i] + ", " + ringHeight[i] + ", " + ringDepth + ", 0)"); //"Ring Ring Ring" 
+		thisRing = Instantiate(prefabObj, positions[i], Quaternion.identity); // place ring in sceneindicates name/type/tag are all "Ring"
+
+		//renderer.material.color.r = color.r;
+		//renderer.material.color.g = color.g;
+		//renderer.material.color.b = color.b;
 		thisRing.transform.localScale = Vector3(ringWidth[i],ringHeight[i],ringDepthConstant); // scale to match specified width/height/depth
 		ChangeVisibility(thisRing,isVisible);
 		AllRings.Push(thisRing); // keep track of rings in scene
