@@ -39,7 +39,7 @@ var yawBuffer: float[];
 var bufferPos = 0;
 
 // CONTROL LOCKS
-var lockXpos = true;
+var lockXpos = false;
 var lockRoll = true;
 
 // TAKEOFF PARAMS

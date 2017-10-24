@@ -38,6 +38,12 @@ import System.IO;
 //-----------------------//
 
 //---DECLARE GLOBAL VARIABLES
+var upArrowDirecionScript: changeUpDirectionArrow;
+var downArrowDirecionScript: changeDownDirectionArrow;
+var arrowsArray = ["up_pointingUp","up_pointingUp", "up_pointingDown", "up_pointingUp", "up_pointingUp", "down_pointingUp",
+"down_pointingUp","down_pointingUp","down_pointingUp", "up_pointingUp","up_pointingUp", "down_pointingDown","down_pointingUp",
+"down_pointingUp"];
+
 var subject = 0;
 var session = 0;
 var record_EDF_file = true; //set to true to tell the EyeLink to record an .edf file
@@ -214,7 +220,7 @@ function Start()
 
 	 //------- UPPER RING LOCATIONS 	
 	// Read in ring locations from text file
- 	var upperRingInfo = ReadInPoints(routeFilename, 100.00);
+ 	var upperRingInfo = ReadInPoints(routeFilename, 50.00);
  	upperRingPositions = upperRingInfo[0];
  	ringWidths = upperRingInfo[1];
  	
@@ -227,7 +233,7 @@ function Start()
 
  	//------- LOWER RING LOCATIONS 	
 	// Read in ring locations from text file
- 	var lowerRingInfo = ReadInPoints(routeFilename, -100.00);
+ 	var lowerRingInfo = ReadInPoints(routeFilename, -50.00);
  	lowerRingPositions = lowerRingInfo[0];
  	//lowerRingWidths = lowerRingInfo[1];
  	
@@ -238,8 +244,6 @@ function Start()
 		lowerCenterWidths2.Push(10.0);
 	}
 
-	var blue = new Color(0,0,255,0);
-	var red = new Color(255,0,0,0);
 	var centerWidths: float[] = upperCenterWidths2.ToBuiltin(float) as float[]; 
  	UpperRingArray = PlaceRings(centerPrefab,upperRingPositions, ringWidths, ringWidths, ringDepth, true);
  	LowerRingArray = PlaceRings(ringPrefab,lowerRingPositions, ringWidths, ringWidths, ringDepth, true);
@@ -347,19 +351,12 @@ function Update() {
 
 			lslBCIInputScript.setMarker ("Fail_Cond_" + expCondition );
 		}
-						
-		// if we failed to go through the ring, or went through the last ring, end the level.
-		if ((transform.position.y < nextUpperRingBounds.min.y || transform.position.y > nextUpperRingBounds.max.y || iNextRing==UpperRingArray.length-1) && (isPractice == false)) {
-			EndLevel();
-			Application.LoadLevel("Loader"); //Go back to the Loader Scene
-			return; //stop executing Update (to avoid, e.g., destroying things twice
-		// if we went through the ring, increment the ring number
-		} else {
-			ringAccuracy.push(Mathf.Abs(transform.position.y - nextUpperRingBounds.center.y)*200/ringWidths[iNextRing]);
-			iNextRing++; // increment the ring number
-			ChangeVisibility(UpperRingArray[iNextRing],true);
-			nextUpperRingBounds = ObjectInfo.ObjectBounds(UpperRingArray[iNextRing].gameObject); // get new ring bounds
-		}
+
+		SwitchArrowIfNeeded(iNextRing);
+		ringAccuracy.push(Mathf.Abs(transform.position.y - nextUpperRingBounds.center.y)*200/ringWidths[iNextRing]);
+		iNextRing++; // increment the ring number
+		ChangeVisibility(UpperRingArray[iNextRing],true);
+		nextUpperRingBounds = ObjectInfo.ObjectBounds(UpperRingArray[iNextRing].gameObject); // get new ring bounds
 	}
 }
 
@@ -377,6 +374,40 @@ function sendMarkerWithRingSize ( sMarkerName : String )
 	lslBCIInputScript.setMarker ( sMarkerName + "_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y));
 }
 
+
+function SwitchArrowIfNeeded(ringIndex)
+{
+	currentArrow = arrowsArray[ringIndex];
+	if (currentArrow == "up_pointingUp")	// show up direction arrow in up position
+	{
+		position = Vector3(0.0,1.0,0.0);
+		upArrowDirecionScript.ChangePosition(position);
+		upArrowDirecionScript.Show();
+		downArrowDirecionScript.Hide();
+	}
+	if (currentArrow == "up_pointingDown")	// show up direction arrow in down position
+	{
+		position = Vector3(0.0,1.0,0.0);
+		downArrowDirecionScript.ChangePosition(position);
+		downArrowDirecionScript.Show();
+		upArrowDirecionScript.Hide();
+	}
+	if (currentArrow == "down_pointingUp")	// show down direction arrow in up position
+	{
+		position = Vector3(0.0,-4.0,0.0);
+		upArrowDirecionScript.ChangePosition(position);
+		upArrowDirecionScript.Show();
+		downArrowDirecionScript.Hide();
+	}
+	if (currentArrow == "down_pointingDown")	// show down direction arrow in down position
+	{
+		position = Vector3(0.0,-4.0,0.0);
+		downArrowDirecionScript.ChangePosition(position);
+		upArrowDirecionScript.Hide();
+		downArrowDirecionScript.Show();
+	}
+
+}
 
 //---END THE LEVEL AND DO CLEANUP
 //This function is called during the Update function, or by a helper script.
