@@ -43,6 +43,7 @@ var downArrowDirecionScript: changeDownDirectionArrow;
 var arrowsArray = ["up_pointingUp","up_pointingUp", "up_pointingDown", "up_pointingUp", "up_pointingUp", "down_pointingUp",
 "down_pointingUp","down_pointingUp","down_pointingUp", "up_pointingUp","up_pointingUp", "down_pointingDown","down_pointingUp",
 "down_pointingUp"];
+var currentRing = "Up";
 
 var subject = 0;
 var session = 0;
@@ -330,33 +331,63 @@ function Update() {
 	// Check if subject has passed the next ring
 	if (transform.position.z > nextUpperRingBounds.center.z) 
 	{
-		if ( iNextRing <= ( UpperRingArray.length-1 ) )
+		if (currentRing == "Up" && iNextRing <= ( UpperRingArray.length-1 ) )
 		{
 			// CHANGED, FJ, 2015-05-11
 			// Inject Marker into the data stream whenever the plane passes a ring.
 			// Markers are written via LSL_BCI_Input, which uses the framework labstreaminglayer.
-			lslBCIInputScript.setMarker ("RingPassed_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y));
+			lslBCIInputScript.setMarker ("UpRingPassed_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y));
 
-			lslBCIInputScript.setMarker ("RingPassed_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y) + "_Cond_" + expCondition );
+			lslBCIInputScript.setMarker ("UpRingPassed_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y) + "_Cond_" + expCondition );
 
-			lslBCIInputScript.setMarker ("RingPassed_Cond_" + expCondition );
+			lslBCIInputScript.setMarker ("UpRingPassed_Cond_" + expCondition );
+		}
+
+		if (currentRing == "Down" && iNextRing <= ( UpperRingArray.length-1 ) )
+		{
+			// CHANGED, FJ, 2015-05-11
+			// Inject Marker into the data stream whenever the plane passes a ring.
+			// Markers are written via LSL_BCI_Input, which uses the framework labstreaminglayer.
+			lslBCIInputScript.setMarker ("DownRingPassed_Size_" + Mathf.Abs(nextLowerRingBounds.max.y - nextLowerRingBounds.min.y));
+
+			lslBCIInputScript.setMarker ("DownRingPassed_Size_" + Mathf.Abs(nextLowerRingBounds.max.y - nextLowerRingBounds.min.y) + "_Cond_" + expCondition );
+
+			lslBCIInputScript.setMarker ("DownRingPassed_Cond_" + expCondition );
 		}
 
 		// ADDED, FJ, 2016-08-10
-		if ((transform.position.y < nextUpperRingBounds.min.y || transform.position.y > nextUpperRingBounds.max.y ) )
+		if (currentRing == "Up" && (transform.position.y < nextUpperRingBounds.min.y || transform.position.y > nextUpperRingBounds.max.y ) )
 		{
-			lslBCIInputScript.setMarker ("Fail_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y));
+			lslBCIInputScript.setMarker ("UpFail_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y));
 
-			lslBCIInputScript.setMarker ("Fail_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y) + "_Cond_" + expCondition );
+			lslBCIInputScript.setMarker ("UpFail_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y) + "_Cond_" + expCondition );
 
-			lslBCIInputScript.setMarker ("Fail_Cond_" + expCondition );
+			lslBCIInputScript.setMarker ("UpFail_Cond_" + expCondition );
+		}
+
+		if (currentRing == "Down" && (transform.position.y < nextLowerRingBounds.min.y || transform.position.y > nextLowerRingBounds.max.y ) )
+		{
+			lslBCIInputScript.setMarker ("DownFail_Size_" + Mathf.Abs(nextLowerRingBounds.max.y - nextLowerRingBounds.min.y));
+
+			lslBCIInputScript.setMarker ("DownFail_Size_" + Mathf.Abs(nextLowerRingBounds.max.y - nextLowerRingBounds.min.y) + "_Cond_" + expCondition );
+
+			lslBCIInputScript.setMarker ("DownFail_Cond_" + expCondition );
 		}
 
 		SwitchArrowIfNeeded(iNextRing);
-		ringAccuracy.push(Mathf.Abs(transform.position.y - nextUpperRingBounds.center.y)*200/ringWidths[iNextRing]);
+		if (currentRing == "Up")
+		{
+			ringAccuracy.push(Mathf.Abs(transform.position.y - nextUpperRingBounds.center.y)*200/ringWidths[iNextRing]);
+		}
+		else
+		{
+			ringAccuracy.push(Mathf.Abs(transform.position.y - nextLowerRingBounds.center.y)*200/ringWidths[iNextRing]);
+		}
 		iNextRing++; // increment the ring number
 		ChangeVisibility(UpperRingArray[iNextRing],true);
+		ChangeVisibility(LowerRingArray[iNextRing],true);
 		nextUpperRingBounds = ObjectInfo.ObjectBounds(UpperRingArray[iNextRing].gameObject); // get new ring bounds
+		nextLowerRingBounds = ObjectInfo.ObjectBounds(LowerRingArray[iNextRing].gameObject); // get new ring bounds
 	}
 }
 
@@ -380,6 +411,7 @@ function SwitchArrowIfNeeded(ringIndex)
 	currentArrow = arrowsArray[ringIndex];
 	if (currentArrow == "up_pointingUp")	// show up direction arrow in up position
 	{
+		currentRing = "Up";
 		position = Vector3(0.0,1.0,0.0);
 		upArrowDirecionScript.ChangePosition(position);
 		upArrowDirecionScript.Show();
@@ -387,6 +419,7 @@ function SwitchArrowIfNeeded(ringIndex)
 	}
 	if (currentArrow == "up_pointingDown")	// show up direction arrow in down position
 	{
+		currentRing = "Down";
 		position = Vector3(0.0,1.0,0.0);
 		downArrowDirecionScript.ChangePosition(position);
 		downArrowDirecionScript.Show();
@@ -394,6 +427,7 @@ function SwitchArrowIfNeeded(ringIndex)
 	}
 	if (currentArrow == "down_pointingUp")	// show down direction arrow in up position
 	{
+		currentRing = "Up";
 		position = Vector3(0.0,-4.0,0.0);
 		upArrowDirecionScript.ChangePosition(position);
 		upArrowDirecionScript.Show();
@@ -401,6 +435,7 @@ function SwitchArrowIfNeeded(ringIndex)
 	}
 	if (currentArrow == "down_pointingDown")	// show down direction arrow in down position
 	{
+		currentRing = "Down";
 		position = Vector3(0.0,-4.0,0.0);
 		downArrowDirecionScript.ChangePosition(position);
 		upArrowDirecionScript.Hide();
