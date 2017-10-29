@@ -4,8 +4,9 @@ var movements = new Array();
 var index = 0;
 
 function Start () {
-	movements = ReadMarkerLocations("NedeConfig/markerLocations.txt");
-	InvokeRepeating("ChangePosition", 0, 2);
+	//movements = ReadMarkerLocations("NedeConfig/markerLocations.txt");
+	//yield WaitForSeconds(10);
+	//InvokeRepeating("ChangePosition", 0, 2);
 }
 
 function Update () {
@@ -13,8 +14,12 @@ function Update () {
 }
 
 function ChangePosition() {
+	//if (index < 8) {
+	//	index ++;
+	//	return;
+	//}
 	var a = transform as RectTransform;
-	a.anchoredPosition3D = movements[index];
+	a.anchoredPosition3D = movements[index-8];
 	// transform.anchoredPosition3D = movements[index];
 	index++;
 }

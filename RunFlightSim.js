@@ -38,11 +38,12 @@ import System.IO;
 //-----------------------//
 
 //---DECLARE GLOBAL VARIABLES
+var controlNbackScript: ControlNback;
 var upArrowDirecionScript: changeUpDirectionArrow;
 var downArrowDirecionScript: changeDownDirectionArrow;
 var arrowsArray = ["up_pointingUp","up_pointingUp", "up_pointingDown", "up_pointingUp", "up_pointingUp", "down_pointingUp",
 "down_pointingUp","down_pointingUp","down_pointingUp", "up_pointingUp","up_pointingUp", "down_pointingDown","down_pointingUp",
-"down_pointingUp"];
+"down_pointingUp","up_pointingDown","up_pointingDown","down_pointingUp","down_pointingUp","up_pointingUp","down_pointingUp"];
 var currentRing = "Up";
 
 var subject = 0;
@@ -116,6 +117,21 @@ var loaderScript;
 var courseCompleted;
 var courseAccuracy;
 
+//Sound variables
+var one;
+var two;
+var three;
+var four;
+var five;
+var six;
+var seven;
+var eight;
+var alarm;
+var markerPositions: float[];
+var letters: String[];
+var nBackFilename = "NedeConfig/1-back.txt";
+var audioFiles = [];
+
 // Private Variables
 private var eyelinkScript; //the script that passes messages to and receives eye positions from the eyetracker
 private var flightScript; // the script that allows the subject to control the flight
@@ -136,10 +152,14 @@ private var lslBCIInputScript; // Online communication with the BCI, here mainly
 // SET UP
 //-----------------------//
 function Start() 
-{
+{	
+	var audioObjects: Component[];
+	audioObjects = GetComponents(AudioSource);
+	controlNbackScript.initSounds(audioObjects);
+
+
 	// Stop update functions from running while we start up
 	this.enabled = false;
-	
 	eyelinkScript = gameObject.AddComponent(eyelink); // to interface with eye tracker
 	gameObject.AddComponent(Constants); // to get constants
 	flightScript = gameObject.AddComponent(ControlFlight); // to enable flight controls
@@ -219,6 +239,7 @@ function Start()
 	eyelinkScript.write("eyelink.gain_y: " + gain_y);
 	eyelinkScript.write("----- END SESSION PARAMETERS -----");
 
+
 	 //------- UPPER RING LOCATIONS 	
 	// Read in ring locations from text file
  	var upperRingInfo = ReadInPoints(routeFilename, 50.00);
@@ -278,6 +299,9 @@ function Start()
 	// --------------------------------------------------------
 
 	flightScript.StartFlight();
+	controlNbackScript.startNback();
+
+
 
 
 
@@ -390,6 +414,7 @@ function Update() {
 		nextLowerRingBounds = ObjectInfo.ObjectBounds(LowerRingArray[iNextRing].gameObject); // get new ring bounds
 	}
 }
+
 
 // ADDED, FJ, 2015-05-11
 // Inserts a specific stick movement event depending on the
@@ -566,6 +591,8 @@ function ReadInPoints(fileName: String, heightToAdd: float)
 	var vecWidths: float[] = txtWidths.ToBuiltin(float) as float[];
 	return [vecPoints, vecWidths];
 }
+
+
 
 //-----------------------//
 // Place rings at given points and log their positions
