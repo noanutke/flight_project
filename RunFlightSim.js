@@ -41,9 +41,19 @@ import System.IO;
 var controlNbackScript: ControlNback;
 var upArrowDirecionScript: changeUpDirectionArrow;
 var downArrowDirecionScript: changeDownDirectionArrow;
-var arrowsArray = ["up_pointingUp","up_pointingUp", "up_pointingDown", "up_pointingUp", "up_pointingUp", "down_pointingUp",
+var arrowsArrayLong = ["up_pointingUp","up_pointingUp", "up_pointingDown", "up_pointingUp", "up_pointingUp", "down_pointingUp",
+"down_pointingUp","down_pointingUp","down_pointingUp", "up_pointingUp","up_pointingUp", "down_pointingDown","down_pointingUp",
+"down_pointingUp","up_pointingDown","up_pointingDown","down_pointingUp","down_pointingUp","up_pointingUp","down_pointingUp",
+"up_pointingUp","up_pointingUp", "up_pointingDown", "up_pointingUp", "up_pointingUp", "down_pointingUp",
+"down_pointingUp","down_pointingUp","down_pointingUp", "up_pointingUp","up_pointingUp", "down_pointingDown","down_pointingUp",
+"down_pointingUp","up_pointingDown","up_pointingDown","down_pointingUp","down_pointingUp","up_pointingUp","down_pointingUp",
+"up_pointingUp","up_pointingUp", "up_pointingDown", "up_pointingUp", "up_pointingUp", "down_pointingUp",
+"down_pointingUp","down_pointingUp","down_pointingUp", "up_pointingUp","up_pointingUp", "down_pointingDown","down_pointingUp",
+"down_pointingUp","up_pointingDown","up_pointingDown","down_pointingUp","down_pointingUp","up_pointingUp","down_pointingUp",
+"up_pointingUp","up_pointingUp", "up_pointingDown", "up_pointingUp", "up_pointingUp", "down_pointingUp",
 "down_pointingUp","down_pointingUp","down_pointingUp", "up_pointingUp","up_pointingUp", "down_pointingDown","down_pointingUp",
 "down_pointingUp","up_pointingDown","up_pointingDown","down_pointingUp","down_pointingUp","up_pointingUp","down_pointingUp"];
+
 var currentRing = "Up";
 
 var subject = 0;
@@ -132,6 +142,8 @@ var letters: String[];
 var nBackFilename = "NedeConfig/1-back.txt";
 var audioFiles = [];
 
+
+var successInRow = 0;
 // Private Variables
 
 
@@ -367,6 +379,11 @@ function Update() {
 			lslBCIInputScript.setMarker ("UpRingPassed_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y) + "_Cond_" + expCondition );
 
 			lslBCIInputScript.setMarker ("UpRingPassed_Cond_" + expCondition );
+			successInRow += 1;
+			if (successInRow >= 7) {
+				controlNbackScript.moveMarkerScript.changePosition(1);
+				successInRow = 0;
+			}
 		}
 
 		if (currentRing == "Down" && iNextRing <= ( UpperRingArray.length-1 ) )
@@ -379,6 +396,11 @@ function Update() {
 			lslBCIInputScript.setMarker ("DownRingPassed_Size_" + Mathf.Abs(nextLowerRingBounds.max.y - nextLowerRingBounds.min.y) + "_Cond_" + expCondition );
 
 			lslBCIInputScript.setMarker ("DownRingPassed_Cond_" + expCondition );
+			successInRow += 1;
+			if (successInRow >= 3) {
+				controlNbackScript.moveMarkerScript.changePosition(1);
+				successInRow = 0;
+			}
 		}
 
 		// ADDED, FJ, 2016-08-10
@@ -389,6 +411,9 @@ function Update() {
 			lslBCIInputScript.setMarker ("UpFail_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y) + "_Cond_" + expCondition );
 
 			lslBCIInputScript.setMarker ("UpFail_Cond_" + expCondition );
+			controlNbackScript.moveMarkerScript.changePosition(-1);
+			controlNbackScript.setFailedToPassRing();
+			successInRow = 0;
 		}
 
 		if (currentRing == "Down" && (transform.position.y < nextLowerRingBounds.min.y || transform.position.y > nextLowerRingBounds.max.y ) )
@@ -434,8 +459,11 @@ function sendMarkerWithRingSize ( sMarkerName : String )
 
 
 function SwitchArrowIfNeeded(ringIndex)
-{
-	currentArrow = arrowsArray[ringIndex];
+{	
+	if (arrowsArrayLong.length <= ringIndex) {
+		print (ringIndex);
+	}
+	currentArrow = arrowsArrayLong[ringIndex];
 	if (currentArrow == "up_pointingUp")	// show up direction arrow in up position
 	{
 		currentRing = "Up";

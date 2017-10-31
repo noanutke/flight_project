@@ -27,6 +27,11 @@ var targetPresentedLastTrial = false;
 var tooSlow = false;
 var tooSlowLastTrial = false;
 var lastLetterTime = 0;
+var failedToPassRing = false;
+
+function setFailedToPassRing() {
+	failedToPassRing = true;
+}
 
 function readNextLetter() {
 	
@@ -177,9 +182,10 @@ function isTarget() {
 }
 
 function playAlarmIfNeeded() {
-	if (wasLastTrialError()) {
+	if (wasLastTrialError() || failedToPassRing) {
 		alarm.Play();	// false alarm
 	}
+	failedToPassRing = false;
 }
 
 function wasLastTrialError() {
