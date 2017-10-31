@@ -1,7 +1,9 @@
 ﻿#pragma strict
 
 var movements = new Array();
-var index = 0;
+var index: int = 0;
+var lastLocation: float = 0;
+var stepSize = 0.25;
 
 function Start () {
 	//movements = ReadMarkerLocations("NedeConfig/markerLocations.txt");
@@ -13,16 +15,21 @@ function Update () {
 	
 }
 
-function ChangePosition() {
-	//if (index < 8) {
-	//	index ++;
-	//	return;
-	//}
-	var a = transform as RectTransform;
-	a.anchoredPosition3D = movements[index-8];
-	// transform.anchoredPosition3D = movements[index];
-	index++;
+function isInBounderies(location: float) {
+	if (location > 2 || location < -2) {
+		return false;
+	}
+	return true;
 }
+
+function changePosition(sign: int) {
+	var a = transform as RectTransform;
+	if (isInBounderies(lastLocation + sign * stepSize)) {
+		lastLocation += sign * stepSize;
+		a.anchoredPosition3D = Vector3(-0.30,lastLocation,0.00);
+	}
+}
+
 
 function ReadMarkerLocations(fileName: String) 
 {

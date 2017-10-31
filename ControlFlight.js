@@ -1,4 +1,7 @@
 // Created 9/4/14 by DJ.
+
+//N back params
+var nBackScript;
  
 // MAIN CONTROL PARAMETERS
 var rollSpeed : float = 10.0; //rolling rotation speed
@@ -69,8 +72,9 @@ function Start ()
 
 
 
-function StartFlight() 
+function StartFlight(controlNbackScript) 
 {
+	nBackScript = controlNbackScript;
 	// Get eyelink script for logging	
 	eyelinkScript = gameObject.GetComponent(eyelink); //gets eye position and records messages
 	runFlightScript = gameObject.GetComponent(RunFlightSim); //gets eye position and records messages
@@ -114,7 +118,13 @@ function StartFlight()
 }
 
 function Update()
-{
+{	
+	var input = Input.touches;
+	var names = Input.GetJoystickNames();
+
+    if(Input.anyKey){
+    	nBackScript.buttonPressed();
+    }
 	// Move forward	
 	transform.Translate(Vector3.forward*Time.deltaTime*speed);
 	

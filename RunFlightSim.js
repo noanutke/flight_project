@@ -133,6 +133,8 @@ var nBackFilename = "NedeConfig/1-back.txt";
 var audioFiles = [];
 
 // Private Variables
+
+
 private var eyelinkScript; //the script that passes messages to and receives eye positions from the eyetracker
 private var flightScript; // the script that allows the subject to control the flight
 private var portIsSync = false; //is parallel port sending Constants.SYNC?
@@ -298,8 +300,8 @@ function Start()
 	lslBCIInputScript.setMarker ("Run_Start_Cond_" + expCondition );
 	// --------------------------------------------------------
 
-	flightScript.StartFlight();
-	controlNbackScript.startNback();
+	flightScript.StartFlight(controlNbackScript);
+	//controlNbackScript.startNback();
 
 
 
