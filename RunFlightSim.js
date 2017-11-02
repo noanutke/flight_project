@@ -41,20 +41,24 @@ import System.IO;
 var controlNbackScript: ControlNback;
 var upArrowDirecionScript: changeUpDirectionArrow;
 var downArrowDirecionScript: changeDownDirectionArrow;
-var arrowsArrayLong = ["up_pointingUp","up_pointingUp", "up_pointingDown", "up_pointingUp", "up_pointingUp", "down_pointingUp",
-"down_pointingUp","down_pointingUp","down_pointingUp", "up_pointingUp","up_pointingUp", "down_pointingDown","down_pointingUp",
-"down_pointingUp","up_pointingDown","up_pointingDown","down_pointingUp","down_pointingUp","up_pointingUp","down_pointingUp",
-"up_pointingUp","up_pointingUp", "up_pointingDown", "up_pointingUp", "up_pointingUp", "down_pointingUp",
-"down_pointingUp","down_pointingUp","down_pointingUp", "up_pointingUp","up_pointingUp", "down_pointingDown","down_pointingUp",
-"down_pointingUp","up_pointingDown","up_pointingDown","down_pointingUp","down_pointingUp","up_pointingUp","down_pointingUp",
-"up_pointingUp","up_pointingUp", "up_pointingDown", "up_pointingUp", "up_pointingUp", "down_pointingUp",
-"down_pointingUp","down_pointingUp","down_pointingUp", "up_pointingUp","up_pointingUp", "down_pointingDown","down_pointingUp",
-"down_pointingUp","up_pointingDown","up_pointingDown","down_pointingUp","down_pointingUp","up_pointingUp","down_pointingUp",
-"up_pointingUp","up_pointingUp", "up_pointingDown", "up_pointingUp", "up_pointingUp", "down_pointingUp",
-"down_pointingUp","down_pointingUp","down_pointingUp", "up_pointingUp","up_pointingUp", "down_pointingDown","down_pointingUp",
-"down_pointingUp","up_pointingDown","up_pointingDown","down_pointingUp","down_pointingUp","up_pointingUp","down_pointingUp"];
+var leftArrowDirecionScript: changeLeftDirectionArrow;
+var rightArrowDirecionScript: changeRightDirectionArrow;
 
-var currentRing = "Up";
+var arrowsArrayLong = [["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
+["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
+["up_pointingUp", "right_pointingLeft"],["down_pointingUp", "right_pointingRight"],
+["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"],["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
+["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
+["up_pointingUp", "right_pointingLeft"],["down_pointingUp", "right_pointingRight"],
+["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"],["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
+["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
+["up_pointingUp", "right_pointingLeft"],["down_pointingUp", "right_pointingRight"],
+["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"],["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
+["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
+["up_pointingUp", "right_pointingLeft"],["down_pointingUp", "right_pointingRight"],
+["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"]];
+
+var currentRing = "UpRight";
 
 var subject = 0;
 var session = 0;
@@ -144,6 +148,7 @@ var audioFiles = [];
 
 
 var successInRow = 0;
+var failuresInRow = 0;
 // Private Variables
 
 
@@ -152,10 +157,14 @@ private var flightScript; // the script that allows the subject to control the f
 private var portIsSync = false; //is parallel port sending Constants.SYNC?
 private var syncTime = 0.0; //  the next time when the sync pulse should be sent
 private var trialEndTime = Mathf.Infinity; //the time when the trial should end
-private var UpperRingArray: Array;
-private var LowerRingArray: Array;
-private var nextUpperRingBounds: Bounds;
-private var nextLowerRingBounds: Bounds;
+private var UpperRightRingArray: Array;
+private var LowerRightRingArray: Array;
+private var UpperLeftRingArray: Array;
+private var LowerLeftRingArray: Array;
+private var nextUpperRightRingBounds: Bounds;
+private var nextLowerRightRingBounds: Bounds;
+private var nextUpperLeftRingBounds: Bounds;
+private var nextLowerLeftRingBounds: Bounds;
 private var iNextRing = 0;
 private var ringAccuracy = new Array();
 
@@ -167,10 +176,11 @@ private var lslBCIInputScript; // Online communication with the BCI, here mainly
 //-----------------------//
 function Start() 
 {	
+
 	var audioObjects: Component[];
 	audioObjects = GetComponents(AudioSource);
 	controlNbackScript.initSounds(audioObjects);
-
+	controlNbackScript.setPrefabRings(ringPrefab, centerPrefab);
 
 	// Stop update functions from running while we start up
 	this.enabled = false;
@@ -254,11 +264,11 @@ function Start()
 	eyelinkScript.write("----- END SESSION PARAMETERS -----");
 
 
-	 //------- UPPER RING LOCATIONS 	
+	 //------- UPPER RIGHT RING LOCATIONS 	
 	// Read in ring locations from text file
- 	var upperRingInfo = ReadInPoints(routeFilename, 50.00);
- 	upperRingPositions = upperRingInfo[0];
- 	ringWidths = upperRingInfo[1];
+ 	var upperRightRingInfo = ReadInPoints(routeFilename, 50.00, 50.00);
+ 	upperRightRingPositions = upperRightRingInfo[0];
+ 	ringWidths = upperRightRingInfo[1];
  	
 	// Put rings in scene 	
 	var upperCenterWidths2 = new Array();
@@ -267,27 +277,57 @@ function Start()
 		upperCenterWidths2.Push(10.0);
 	}
 
- 	//------- LOWER RING LOCATIONS 	
+ 	//------- LOWER RIGHT RING LOCATIONS 	
 	// Read in ring locations from text file
- 	var lowerRingInfo = ReadInPoints(routeFilename, -50.00);
- 	lowerRingPositions = lowerRingInfo[0];
+ 	var lowerRightRingInfo = ReadInPoints(routeFilename, -50.00, 50.00);
+ 	lowerRightRingPositions = lowerRightRingInfo[0];
  	//lowerRingWidths = lowerRingInfo[1];
- 	
-	// Put rings in scene 	
+
 	var lowerCenterWidths2 = new Array();
 	for(i=0;i<ringWidths.length;i++)
 	{	
 		lowerCenterWidths2.Push(10.0);
 	}
 
+
+	//------- UPPER LEFT RING LOCATIONS 	
+	// Read in ring locations from text file
+ 	var upperLeftRingInfo = ReadInPoints(routeFilename, 50.00, -50.00);
+ 	upperLeftRingPositions = upperLeftRingInfo[0];
+ 	ringWidths = upperLeftRingInfo[1];
+ 	
+	// Put rings in scene 	
+	for(i=0;i<ringWidths.length;i++)
+	{	
+		upperCenterWidths2.Push(10.0);
+	}
+
+ 	//------- LOWER LEFT RING LOCATIONS 	
+	// Read in ring locations from text file
+ 	var lowerLeftRingInfo = ReadInPoints(routeFilename, -50.00, -50.00);
+ 	lowerLeftRingPositions = lowerLeftRingInfo[0];
+ 	//lowerRingWidths = lowerRingInfo[1];
+
+	for(i=0;i<ringWidths.length;i++)
+	{	
+		lowerCenterWidths2.Push(10.0);
+	}
+
+
+	// Put all rings in scene 
+
 	var centerWidths: float[] = upperCenterWidths2.ToBuiltin(float) as float[]; 
- 	UpperRingArray = PlaceRings(centerPrefab,upperRingPositions, ringWidths, ringWidths, ringDepth, true);
- 	LowerRingArray = PlaceRings(ringPrefab,lowerRingPositions, ringWidths, ringWidths, ringDepth, true);
+ 	UpperRightRingArray = PlaceRings(centerPrefab,upperRightRingPositions, ringWidths, ringWidths, ringDepth, true);
+ 	LowerRightRingArray = PlaceRings(ringPrefab,lowerRightRingPositions, ringWidths, ringWidths, ringDepth, true);
+ 	UpperLeftRingArray = PlaceRings(centerPrefab,upperLeftRingPositions, ringWidths, ringWidths, ringDepth, true);
+ 	LowerLeftRingArray = PlaceRings(ringPrefab,lowerLeftRingPositions, ringWidths, ringWidths, ringDepth, true);
  	// RingArray = PlaceRings(ringPrefab,ringPositions, 110, ringWidths, ringDepth, areAllRingsVisible);
  	//CenterArray = PlaceRings(centerPrefab,ringPositions, centerWidths, centerWidths, centerDepth, areAllRingsVisible);
  	// initialize nextRingBounds
- 	nextUpperRingBounds = ObjectInfo.ObjectBounds(UpperRingArray[iNextRing].gameObject);
- 	nextLowerRingBounds = ObjectInfo.ObjectBounds(LowerRingArray[iNextRing].gameObject);
+ 	nextUpperRightRingBounds = ObjectInfo.ObjectBounds(UpperRightRingArray[iNextRing].gameObject);
+ 	nextLowerRightRingBounds = ObjectInfo.ObjectBounds(LowerRightRingArray[iNextRing].gameObject);
+ 	nextUpperLeftRingBounds = ObjectInfo.ObjectBounds(UpperLeftRingArray[iNextRing].gameObject);
+ 	nextLowerLeftRingBounds = ObjectInfo.ObjectBounds(LowerLeftRingArray[iNextRing].gameObject);
 
  	//------- FLIGHT CONTROLS 	
  	// pass parameters to flight control script
@@ -305,7 +345,7 @@ function Start()
 	flightScript.filterDownTime = filterDownTime;
 
 	// Try to pause to allow to start recording!
-	yield WaitForSeconds(10);
+	yield WaitForSeconds(2);
 
 	// Changed, FJ, 20160403 - Send start marker with condition
 	lslBCIInputScript.setMarker ("Run_Start" );
@@ -364,81 +404,72 @@ function Update() {
 	// --------------------------------------------------------
 
 	// Changed, FJ, 2016/08/04, Send plane position, HMD orientation via LSL
-	lslBCIInputScript.sendFlightParams ( transform.position.z, transform.position.y, nextUpperRingBounds.center.z, nextUpperRingBounds.min.y, nextUpperRingBounds.max.y, VRRotation[0], VRRotation[1], VRRotation[2] );
+	lslBCIInputScript.sendFlightParams ( transform.position.z, transform.position.y, nextUpperRightRingBounds.center.z, nextUpperRightRingBounds.min.y, nextUpperRightRingBounds.max.y, VRRotation[0], VRRotation[1], VRRotation[2] );
 
 	// Check if subject has passed the next ring
-	if (transform.position.z > nextUpperRingBounds.center.z) 
+	if (transform.position.z > nextUpperRightRingBounds.center.z) 
 	{
-		if (currentRing == "Up" && iNextRing <= ( UpperRingArray.length-1 ) )
-		{
-			// CHANGED, FJ, 2015-05-11
-			// Inject Marker into the data stream whenever the plane passes a ring.
-			// Markers are written via LSL_BCI_Input, which uses the framework labstreaminglayer.
-			lslBCIInputScript.setMarker ("UpRingPassed_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y));
+		sendTriggerRingPassed();
 
-			lslBCIInputScript.setMarker ("UpRingPassed_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y) + "_Cond_" + expCondition );
-
-			lslBCIInputScript.setMarker ("UpRingPassed_Cond_" + expCondition );
-			successInRow += 1;
-			if (successInRow >= 7) {
-				controlNbackScript.moveMarkerScript.changePosition(1);
-				successInRow = 0;
-			}
+		var ringBounds = null;
+		if (currentRing == "UpRight") {
+			ringBounds = nextUpperRightRingBounds;
+		}
+		else if (currentRing == "UpLeft") {
+			ringBounds = nextUpperLeftRingBounds;
+		}
+		else if (currentRing == "DownRight") {
+			ringBounds = nextLowerRightRingBounds;
+		}
+		else {
+			ringBounds = nextLowerLeftRingBounds;
 		}
 
-		if (currentRing == "Down" && iNextRing <= ( UpperRingArray.length-1 ) )
-		{
-			// CHANGED, FJ, 2015-05-11
-			// Inject Marker into the data stream whenever the plane passes a ring.
-			// Markers are written via LSL_BCI_Input, which uses the framework labstreaminglayer.
-			lslBCIInputScript.setMarker ("DownRingPassed_Size_" + Mathf.Abs(nextLowerRingBounds.max.y - nextLowerRingBounds.min.y));
-
-			lslBCIInputScript.setMarker ("DownRingPassed_Size_" + Mathf.Abs(nextLowerRingBounds.max.y - nextLowerRingBounds.min.y) + "_Cond_" + expCondition );
-
-			lslBCIInputScript.setMarker ("DownRingPassed_Cond_" + expCondition );
-			successInRow += 1;
-			if (successInRow >= 3) {
-				controlNbackScript.moveMarkerScript.changePosition(1);
-				successInRow = 0;
-			}
-		}
-
-		// ADDED, FJ, 2016-08-10
-		if (currentRing == "Up" && (transform.position.y < nextUpperRingBounds.min.y || transform.position.y > nextUpperRingBounds.max.y ) )
-		{
-			lslBCIInputScript.setMarker ("UpFail_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y));
-
-			lslBCIInputScript.setMarker ("UpFail_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y) + "_Cond_" + expCondition );
-
-			lslBCIInputScript.setMarker ("UpFail_Cond_" + expCondition );
-			controlNbackScript.moveMarkerScript.changePosition(-1);
-			controlNbackScript.setFailedToPassRing();
-			successInRow = 0;
-		}
-
-		if (currentRing == "Down" && (transform.position.y < nextLowerRingBounds.min.y || transform.position.y > nextLowerRingBounds.max.y ) )
-		{
-			lslBCIInputScript.setMarker ("DownFail_Size_" + Mathf.Abs(nextLowerRingBounds.max.y - nextLowerRingBounds.min.y));
-
-			lslBCIInputScript.setMarker ("DownFail_Size_" + Mathf.Abs(nextLowerRingBounds.max.y - nextLowerRingBounds.min.y) + "_Cond_" + expCondition );
-
-			lslBCIInputScript.setMarker ("DownFail_Cond_" + expCondition );
-		}
+		checkIfRingFailedAndSendTriggger(ringBounds);
 
 		SwitchArrowIfNeeded(iNextRing);
-		if (currentRing == "Up")
-		{
-			ringAccuracy.push(Mathf.Abs(transform.position.y - nextUpperRingBounds.center.y)*200/ringWidths[iNextRing]);
-		}
-		else
-		{
-			ringAccuracy.push(Mathf.Abs(transform.position.y - nextLowerRingBounds.center.y)*200/ringWidths[iNextRing]);
-		}
+
 		iNextRing++; // increment the ring number
-		ChangeVisibility(UpperRingArray[iNextRing],true);
-		ChangeVisibility(LowerRingArray[iNextRing],true);
-		nextUpperRingBounds = ObjectInfo.ObjectBounds(UpperRingArray[iNextRing].gameObject); // get new ring bounds
-		nextLowerRingBounds = ObjectInfo.ObjectBounds(LowerRingArray[iNextRing].gameObject); // get new ring bounds
+		ChangeVisibility(UpperRightRingArray[iNextRing],true);
+		ChangeVisibility(LowerRightRingArray[iNextRing],true);
+		nextUpperRightRingBounds = ObjectInfo.ObjectBounds(UpperRightRingArray[iNextRing].gameObject); // get new ring bounds
+		nextLowerRightRingBounds = ObjectInfo.ObjectBounds(LowerRightRingArray[iNextRing].gameObject); // get new ring bounds
+		nextUpperLeftRingBounds = ObjectInfo.ObjectBounds(UpperLeftRingArray[iNextRing].gameObject); // get new ring bounds
+		nextLowerLeftRingBounds = ObjectInfo.ObjectBounds(LowerLeftRingArray[iNextRing].gameObject);
+	}
+}
+
+function checkIfRingFailedAndSendTriggger(ringBounds) {
+	if (transform.position.y < ringBounds.min.y || transform.position.y > ringBounds.max.y  ||
+		transform.position.x < ringBounds.min.x || transform.position.x > ringBounds.max.x)
+	{
+		lslBCIInputScript.setMarker (currentRing + "Fail_Size_" + Mathf.Abs(ringBounds.max.y - ringBounds.min.y));
+
+		lslBCIInputScript.setMarker (currentRing + "Fail_Size_" + Mathf.Abs(ringBounds.max.y - ringBounds.min.y) + "_Cond_" + expCondition );
+
+		lslBCIInputScript.setMarker (currentRing + "Fail_Cond_" + expCondition );
+
+		controlNbackScript.setFailure();
+
+		return true;
+	}
+	controlNbackScript.setSuccess();
+	return false;
+
+}
+
+function sendTriggerRingPassed() {
+	if (iNextRing <= ( LowerRightRingArray.length-1 ) )
+	{
+		// CHANGED, FJ, 2015-05-11
+		// Inject Marker into the data stream whenever the plane passes a ring.
+		// Markers are written via LSL_BCI_Input, which uses the framework labstreaminglayer.
+		lslBCIInputScript.setMarker (currentRing + "RingPassed_Size_" + Mathf.Abs(nextLowerRightRingBounds.max.y - nextLowerRightRingBounds.min.y));
+
+		lslBCIInputScript.setMarker (currentRing + "RingPassed_Size_" + Mathf.Abs(nextLowerRightRingBounds.max.y - nextLowerRightRingBounds.min.y) + "_Cond_" + expCondition );
+
+		lslBCIInputScript.setMarker (currentRing + "RingPassed_Cond_" + expCondition );
+
 	}
 }
 
@@ -454,7 +485,7 @@ function sendMarkerWithRingSize ( sMarkerName : String )
 	// CHANGED, FJ, 2015-05-11
 	// Annotate the size of the next ring to the marker string passed as argument
 	// and inject the resulting marker into the data stream via the labstreaminglayer framework.
-	lslBCIInputScript.setMarker ( sMarkerName + "_Size_" + Mathf.Abs(nextUpperRingBounds.max.y - nextUpperRingBounds.min.y));
+	lslBCIInputScript.setMarker ( sMarkerName + "_Size_" + Mathf.Abs(nextUpperRightRingBounds.max.y - nextUpperRightRingBounds.min.y));
 }
 
 
@@ -464,7 +495,7 @@ function SwitchArrowIfNeeded(ringIndex)
 		print (ringIndex);
 	}
 	currentArrow = arrowsArrayLong[ringIndex];
-	if (currentArrow == "up_pointingUp")	// show up direction arrow in up position
+	if (currentArrow[0] == "up_pointingUp")	// show up direction arrow in up position
 	{
 		currentRing = "Up";
 		position = Vector3(0.0,1.0,0.0);
@@ -472,7 +503,7 @@ function SwitchArrowIfNeeded(ringIndex)
 		upArrowDirecionScript.Show();
 		downArrowDirecionScript.Hide();
 	}
-	if (currentArrow == "up_pointingDown")	// show up direction arrow in down position
+	if (currentArrow[0] == "up_pointingDown")	// show up direction arrow in down position
 	{
 		currentRing = "Down";
 		position = Vector3(0.0,1.0,0.0);
@@ -480,7 +511,7 @@ function SwitchArrowIfNeeded(ringIndex)
 		downArrowDirecionScript.Show();
 		upArrowDirecionScript.Hide();
 	}
-	if (currentArrow == "down_pointingUp")	// show down direction arrow in up position
+	if (currentArrow[0] == "down_pointingUp")	// show down direction arrow in up position
 	{
 		currentRing = "Up";
 		position = Vector3(0.0,-4.0,0.0);
@@ -488,7 +519,7 @@ function SwitchArrowIfNeeded(ringIndex)
 		upArrowDirecionScript.Show();
 		downArrowDirecionScript.Hide();
 	}
-	if (currentArrow == "down_pointingDown")	// show down direction arrow in down position
+	if (currentArrow[0] == "down_pointingDown")	// show down direction arrow in down position
 	{
 		currentRing = "Down";
 		position = Vector3(0.0,-4.0,0.0);
@@ -496,6 +527,39 @@ function SwitchArrowIfNeeded(ringIndex)
 		upArrowDirecionScript.Hide();
 		downArrowDirecionScript.Show();
 	}
+	if (currentArrow[1] == "left_pointingRight")	// show up direction arrow in up position
+	{
+		currentRing += "Right";
+		position = Vector3(-2.0,-1.5,0.0);
+		rightArrowDirecionScript.ChangePosition(position);
+		rightArrowDirecionScript.Show();
+		leftArrowDirecionScript.Hide();
+	}
+	if (currentArrow[1] == "right_pointingRight")	// show up direction arrow in up position
+	{
+		currentRing += "Right";
+		position = Vector3(2.0,-1.5,0.0);
+		rightArrowDirecionScript.ChangePosition(position);
+		rightArrowDirecionScript.Show();
+		leftArrowDirecionScript.Hide();
+	}
+	if (currentArrow[1] == "right_pointingLeft")	// show up direction arrow in up position
+	{
+		currentRing += "Left";
+		position = Vector3(2.0,-1.5,0.0);
+		leftArrowDirecionScript.ChangePosition(position);
+		leftArrowDirecionScript.Show();
+		rightArrowDirecionScript.Hide();
+	}
+	if (currentArrow[1] == "left_pointingLeft")	// show up direction arrow in up position
+	{
+		currentRing += "Left";
+		position = Vector3(-2.0,-1.5,0.0);
+		leftArrowDirecionScript.ChangePosition(position);
+		leftArrowDirecionScript.Show();
+		rightArrowDirecionScript.Hide();
+	}
+
 
 }
 
@@ -509,7 +573,7 @@ function EndLevel()
 	// --------------------------------------------------------
 
 	//Compute Performance
-	courseCompleted = ((iNextRing)*100/UpperRingArray.length);
+	courseCompleted = ((iNextRing)*100/UpperRightRingArray.length);
 	
 	var sum = 0;
 	for (var i=0; i<ringAccuracy.length; i++) 
@@ -585,7 +649,7 @@ function OnApplicationQuit()
 //-----------------------//
 // Read in 3D points from MATLAB
 //-----------------------//
-function ReadInPoints(fileName: String, heightToAdd: float) 
+function ReadInPoints(fileName: String, heightToAdd: float, horizontalToAdd: float) 
 {
 	// set up
 	var txtPoints = new Array();
@@ -612,7 +676,7 @@ function ReadInPoints(fileName: String, heightToAdd: float)
 	       	var widthString = valSegs[3];
 	       	// TRACING of raw (x,y,z)
 //	      	Debug.Log("xStr: " + xStr + ", yStr: " + yStr + ", zStr: " + zStr);
-	       	txtPoints.Push(Vector3(float.Parse(xStr),float.Parse(yStr)+heightToAdd,float.Parse(zStr)));
+	       	txtPoints.Push(Vector3(float.Parse(xStr)+horizontalToAdd,float.Parse(yStr)+heightToAdd,float.Parse(zStr)));
 	       	txtWidths.Push(float.Parse(widthString));
 		}
      }

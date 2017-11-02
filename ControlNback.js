@@ -4,6 +4,20 @@ var moveMarkerScript: NewBehaviourScript;
 
 var n: int = 1;
 
+var perf1 = Color32(0,255,0,1);
+var perf2 = Color32(128,255,0,1);
+var perf3 = Color32(255,255,0,1);
+var perf4 = Color32(255,128,0,1);
+var perf5 = Color32(255,0,0,1);
+
+var alarmChancePerf1 = 10;
+var alarmChancePerf2 = 8;
+var alarmChancePerf3 = 6;
+var alarmChancePerf4 = 4;
+var alarmChancePerf5 = 2;
+
+var currentPerfLevel = 1;
+
 //Sound variables
 var one: AudioSource;
 var two: AudioSource;
@@ -27,10 +41,26 @@ var targetPresentedLastTrial = false;
 var tooSlow = false;
 var tooSlowLastTrial = false;
 var lastLetterTime = 0;
-var failedToPassRing = false;
+var successInRow = 0;
+var failuresInRow = 0;
+var prefab1: Transform;
+var prefab2: Transform;
 
-function setFailedToPassRing() {
-	failedToPassRing = true;
+
+
+function setFailure() {
+	failuresInRow += 1;
+	successInRow = 0;
+}
+
+function setSuccess() {
+	successInRow += 1;
+	failuresInRow = 0;
+}
+
+function setPrefabRings(_prefab1, _prefab2) {
+	prefab1 = _prefab1;
+	prefab2 = _prefab2;
 }
 
 function readNextLetter() {
@@ -40,9 +70,7 @@ function readNextLetter() {
 	tooSlowLastTrial = tooSlow;
 	buttonPressedForTrial = false;
 	tooSlow = false;
-	if (wasLastTrialError() && !buttonPressedForLastTrial) {
-		moveMarkerScript.changePosition(-1);
-	}
+
 	var letter = letters[currentLetter];
 	if (letter == "1") {
 		one.Play();
@@ -74,11 +102,16 @@ function readNextLetter() {
 }
 
 function Start () {
+	var mash: MeshRenderer;
+	var renderers = prefab1.GetComponentsInChildren(MeshRenderer);
+	mash = renderers[0];
+	mash.sharedMaterials[0].color = perf1;
+	//mash.sharedMaterials[0].SetColor("_Color", perf1);
 	var resultNback = ReadInPointsForNback(nBackFilename);
 	letters = resultNback[0];
-	yield WaitForSeconds(10);
+	yield WaitForSeconds(2);
 	InvokeRepeating("readNextLetter", 0, 2.5);
-	InvokeRepeating("playAlarmIfNeeded", 0.5, 2.5);
+	InvokeRepeating("setPerformanceLevel", 0.5, 2.5);
 
 }
 
@@ -158,14 +191,14 @@ function buttonPressed() {
 	if (targetPresented) {		
 		if (rt * 1000 > expectedRT) {
 			tooSlow = true;
-			moveMarkerScript.changePosition(-1);
+			setFailure();
 		}
 		else {
-			moveMarkerScript.changePosition(1);
+			setSuccess();
 		}
 	}
 	else {
-		moveMarkerScript.changePosition(-1);
+		setFailure();
 	}
 }
 
@@ -181,22 +214,86 @@ function isTarget() {
 	}	
 }
 
-function playAlarmIfNeeded() {
-	if (wasLastTrialError() || failedToPassRing) {
-		alarm.Play();	// false alarm
+function setPerformanceLevel() {
+	setFailureIfLastTrialMissed();
+	var renderers: Component[];
+	var mash: MeshRenderer;
+	var color: Color32; ;
+
+
+	if (failuresInRow >= 2) {
+		failuresInRow = 0;
+		if (currentPerfLevel < 5) {
+			currentPerfLevel += 1;
+		}
+
+		color = getRingsColor();
+		renderers = prefab1.GetComponentsInChildren(MeshRenderer);
+		mash = renderers[0];
+		mash.sharedMaterials[0].color = color;
+		//mash.sharedMaterials[0].SetColor("_Color", color);
 	}
-	failedToPassRing = false;
+	else if (successInRow >= 2) {
+		if (currentPerfLevel > 1) {
+			currentPerfLevel -= 1;
+		}
+		color = getRingsColor();
+		renderers = prefab1.GetComponentsInChildren(MeshRenderer);
+		mash = renderers[0];
+		mash.sharedMaterials[0].color = color;
+		successInRow=0;
+	}
+	playAlarmInNeeded();
+
 }
 
-function wasLastTrialError() {
-	if (buttonPressedForLastTrial && !targetPresentedLastTrial) {
-		return true;	// false alarm
+function shouldShowAlarmBasedOnPerfLevel() {
+	var chance = getAlarmChanceForPerfLevel();
+	var rand = Random.Range(1, chance+1);
+	return rand == 1;
+}
+
+function getAlarmChanceForPerfLevel(){
+	if (currentPerfLevel == 1) {
+		return alarmChancePerf1;
 	}
-	else if (!buttonPressedForLastTrial && targetPresentedLastTrial) {
-		return true;	// miss
+	else if (currentPerfLevel == 2) {
+		return alarmChancePerf2;
 	}
-	else if (tooSlowLastTrial) {
-		return true;
+	else if (currentPerfLevel == 3) {
+		return alarmChancePerf3;
 	}
-	return false;
+	else if (currentPerfLevel == 4) {
+		return alarmChancePerf4;
+	}
+	return alarmChancePerf5;
+}
+
+
+function getRingsColor() {
+	if (currentPerfLevel == 1) {
+		return perf1;
+	}
+	else if (currentPerfLevel == 2) {
+		return perf2;
+	}
+	else if (currentPerfLevel == 3) {
+		return perf3;
+	}
+	else if (currentPerfLevel == 4) {
+		return perf4;
+	}
+	return perf5;
+}
+
+function playAlarmInNeeded() {
+	if (shouldShowAlarmBasedOnPerfLevel()) {
+		alarm.Play();
+	}	
+}
+
+function setFailureIfLastTrialMissed() {
+	if (!buttonPressedForLastTrial && targetPresentedLastTrial) {
+		setFailure();
+	}
 }
