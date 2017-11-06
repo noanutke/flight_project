@@ -47,6 +47,7 @@ var lockRoll = true;
 
 // TAKEOFF PARAMS
 var initialPos = Vector3(0.0, 1000.0, -1000.0);
+//var initialPosArrows: Vector3;
 var firstRingPos = Vector3(0.0, 1000.0, 0.0);
 
 // PRIVATE VARIABLES
@@ -60,6 +61,9 @@ private var maxAltitude = 15000.0; // max altitude allowed before flight is abor
 private var lslBCIInputScript; // Online communication with the BCI, here mainly to set markers
 private var fLastPitch = 0.0;
 
+private var arrows: GameObject;
+//private var transform_Arrows: Transform;
+
 // Use this for initialization
 function Start ()
 {
@@ -67,6 +71,7 @@ function Start ()
 		// Pause updates until StartFlight has been called
 		this.enabled = false;
 	}
+
 }
 
 
@@ -74,6 +79,10 @@ function Start ()
 
 function StartFlight(controlNbackScript) 
 {
+	 
+	//arrows = GameObject.Find("arrows_canvas");
+	//transform_Arrows =  arrows.GetComponent(Transform) as Transform;
+	//initialPosArrows = transform_Arrows.position;
 	nBackScript = controlNbackScript;
 	// Get eyelink script for logging	
 	eyelinkScript = gameObject.GetComponent(eyelink); //gets eye position and records messages
@@ -108,6 +117,7 @@ function StartFlight(controlNbackScript)
 
 	// Set initial plane position
 	transform.position = initialPos;
+	// transform_Arrows.position = initialPos;
 	
 	// Set roll speed
 	rollSpeed = yawSpeed / 10;
@@ -115,6 +125,10 @@ function StartFlight(controlNbackScript)
 	// Start updates
 	isInFlight = true;
 	this.enabled = true;
+}
+
+function setSpeed(moveSpeed) {
+	speed = moveSpeed;
 }
 
 function Update()
@@ -127,11 +141,13 @@ function Update()
     }
 	// Move forward	
 	transform.Translate(Vector3.forward*Time.deltaTime*speed);
+	//transform_Arrows.Translate(Vector3.forward*Time.deltaTime*speed);
 	
 	// TAKEOFF
 	if (transform.position.z<0.0) {
 		// Implement sigmoid takeoff pattern that ends at (x=0, y=firstRingYpos, z=0)
 		transform.position.y = initialPos.y + (firstRingPos.y-initialPos.y)/(1.0 + Mathf.Exp( (transform.position.z-initialPos.z/2) / (initialPos.z/10) ) );
+		//transform_Arrows.position.y = initialPosArrows.y + (firstRingPos.y-initialPosArrows.y)/(1.0 + Mathf.Exp( (transform.position.z-initialPosArrows.z/2) / (initialPosArrows.z/10) ) );
 	// MAIN FLIGHT (Enable controls, inputs, filters, etc.)
 	} else {
 		
@@ -211,17 +227,26 @@ function Update()
 		//Apply drift
 		transform.Rotate(Vector3.right * drift * Time.deltaTime);
 
+		//transform_Arrows.Rotate(Vector3.up * yaw);
+		//transform_Arrows.Rotate(Vector3.right * pitch);
+		//Apply drift
+		//transform_Arrows.Rotate(Vector3.right * drift * Time.deltaTime);
+
 	} 
 		
 	//IMPLEMENT CONTROL LOCKS
     if (lockXpos) { // allow only control in y position
     	transform.position.x = 0;
     	transform.rotation.y = 0;
+    	//transform_Arrows.position.x = 0;
+    	//transform_Arrows.rotation.y = 0;
     }
     if (lockRoll) { // turning in x direction means yaw only
     	transform.rotation.z = 0;
+    	//transform_Arrows.rotation.z = 0;
     } else { // implement roll that's 1/10 of yaw strength
     	transform.rotation.z = -yaw * rollSpeed/yawSpeed; //Roll
+    	//transform_Arrows.rotation.z = -yaw * rollSpeed/yawSpeed; //Roll
     }
     
     // CHECK ELEVATION

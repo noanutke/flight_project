@@ -180,7 +180,16 @@ function Start()
 	var audioObjects: Component[];
 	audioObjects = GetComponents(AudioSource);
 	controlNbackScript.initSounds(audioObjects);
-	controlNbackScript.setPrefabRings(ringPrefab, centerPrefab);
+	var level: int = controlNbackScript.getLevel();
+	if (controlNbackScript.getLevel() == 1) {
+		moveSpeed = 100;
+	}
+	else if (controlNbackScript.getLevel() == 2) {
+		moveSpeed = 300;
+	}
+	else {
+		moveSpeed = 250;
+	}
 
 	// Stop update functions from running while we start up
 	this.enabled = false;
@@ -193,6 +202,7 @@ function Start()
 
 	// CHANGED, FJ, 2015-05-11
 	lslBCIInputScript = gameObject.AddComponent(LSL_BCI_Input); // To interface with online BCI
+	controlNbackScript.setLSL (lslBCIInputScript);
 
 	// Configure the LSL module according to the values received from LevelLoader
 
@@ -206,6 +216,8 @@ function Start()
 	//Load Photodiode textures
 	WhiteSquare = Resources.Load("WHITESQUARE");
 	BlackSquare = Resources.Load("BLACKSQUARE");
+
+	controlNbackScript.setPrefabRings(ringPrefab, centerPrefab);
 
 	//------- EYELINK
 	// Decide on filename
@@ -331,6 +343,8 @@ function Start()
 
  	//------- FLIGHT CONTROLS 	
  	// pass parameters to flight control script
+
+
  	flightScript.speed = moveSpeed;
  	flightScript.pitchSpeed = pitchSpeed;
  	flightScript.lockRoll = lockRoll;
@@ -352,6 +366,7 @@ function Start()
 	lslBCIInputScript.setMarker ("Run_Start_Cond_" + expCondition );
 	// --------------------------------------------------------
 
+	flightScript.setSpeed(moveSpeed);
 	flightScript.StartFlight(controlNbackScript);
 	//controlNbackScript.startNback();
 

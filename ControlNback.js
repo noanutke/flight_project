@@ -1,4 +1,5 @@
 ﻿#pragma strict
+import System.IO;
 
 var moveMarkerScript: NewBehaviourScript;
 
@@ -45,7 +46,68 @@ var successInRow = 0;
 var failuresInRow = 0;
 var prefab1: Transform;
 var prefab2: Transform;
+var level: int;
+var withStress: boolean;
 
+private var lslBCIInputScript: LSL_BCI_Input;
+
+function getLevel() {
+	return level;
+}
+
+function getOpenningParameters () {
+	var useNbackObj =  GameObject.Find ("TextNback");
+	var useNbackInput = useNbackObj.GetComponent(UI.Text) as UI.Text;
+	var levelInputObj =  GameObject.Find ("TextLevel");
+	var levelInput = levelInputObj.GetComponent(UI.Text) as UI.Text;
+	var levelText = levelInput.text;
+	var stressText = useNbackInput.text;
+
+	if (levelText == '1') {
+		n=1;
+		level=1;
+		nBackFilename = "NedeConfig/" + levelText + "-back.txt";
+	}
+	else if (levelText == '2') {
+		n=2;
+		level=2;
+		nBackFilename = "NedeConfig/" + levelText + "-back.txt";
+	}
+	else {
+		n=3;
+		level=3;
+		nBackFilename = "NedeConfig/" + levelText + "-back.txt";
+	}
+
+	if (stressText == "yes") {
+		withStress = true;
+	}
+	else {
+		withStress = false;
+	}
+	GameObject.Find ("openning canvas").SetActive(false);
+}
+
+function Awake() {
+	getOpenningParameters();
+}
+
+function Start () {
+	if (!withStress) {
+		GameObject.Find("arrows_canvas").SetActive(false);
+		return;
+	}
+	var mash: MeshRenderer;
+	var renderers = prefab1.GetComponentsInChildren(MeshRenderer);
+	mash = renderers[0];
+	mash.sharedMaterials[0].color = perf1;
+	//mash.sharedMaterials[0].SetColor("_Color", perf1);
+	letters = ReadInPointsForNback(nBackFilename);
+	yield WaitForSeconds(2);
+	InvokeRepeating("readNextLetter", 0, 2.5);
+	InvokeRepeating("setPerformanceLevel", 0.5, 2.5);
+	//lslBCIInputScript = gameObject.GetComponent(LSL_BCI_Input); 
+}
 
 
 function setFailure() {
@@ -59,8 +121,14 @@ function setSuccess() {
 }
 
 function setPrefabRings(_prefab1, _prefab2) {
+
 	prefab1 = _prefab1;
 	prefab2 = _prefab2;
+	//lslBCIInputScript = gameObject.GetComponent(LSL_BCI_Input); 
+}
+
+function setLSL(lslObject: LSL_BCI_Input) {
+	lslBCIInputScript = lslObject;
 }
 
 function readNextLetter() {
@@ -96,24 +164,12 @@ function readNextLetter() {
 	else if (letter == "8") {
 		eight.Play();
 	}
+	lslBCIInputScript.setMarker ("Letter");
 	targetPresented = isTarget();
 	currentLetter += 1;
 	lastLetterTime = Time.time;
 }
 
-function Start () {
-	var mash: MeshRenderer;
-	var renderers = prefab1.GetComponentsInChildren(MeshRenderer);
-	mash = renderers[0];
-	mash.sharedMaterials[0].color = perf1;
-	//mash.sharedMaterials[0].SetColor("_Color", perf1);
-	var resultNback = ReadInPointsForNback(nBackFilename);
-	letters = resultNback[0];
-	yield WaitForSeconds(2);
-	InvokeRepeating("readNextLetter", 0, 2.5);
-	InvokeRepeating("setPerformanceLevel", 0.5, 2.5);
-
-}
 
 function Update () {
 
@@ -161,24 +217,18 @@ function ReadInPointsForNback(fileName: String)
  		//var valSegs2:String[]=line.Split("\t");
  		// Parse Line
 		var valSegs:String[]=line.Split("\t"[0]);
-		if (valSegs.length>2) 
-		{
-			var letter = valSegs[0];	
-	       	var markerLocation = valSegs[1];
 
-	       	// TRACING of raw (x,y,z)
+		var letter = valSegs[0];	
+
+       	// TRACING of raw (x,y,z)
 //	      	Debug.Log("xStr: " + xStr + ", yStr: " + yStr + ", zStr: " + zStr);
-	       	txtLetters.Push(letter);
-	       	if (markerLocation != "") {
-	       		txtMarkerPosition.Push(float.Parse(markerLocation));
-	       	}
-		}
+       	txtLetters.Push(letter);
+		
 		i++;
      }
 
 	var letters: String[] = txtLetters.ToBuiltin(String) as String[];
-	var positions: float[] = txtMarkerPosition.ToBuiltin(float) as float[];
-	return [letters, positions];
+	return letters;
 }
 
 function buttonPressed() {
@@ -192,13 +242,16 @@ function buttonPressed() {
 		if (rt * 1000 > expectedRT) {
 			tooSlow = true;
 			setFailure();
+			lslBCIInputScript.setMarker ("HIT");
 		}
 		else {
 			setSuccess();
+			lslBCIInputScript.setMarker ("HIT");
 		}
 	}
 	else {
 		setFailure();
+		lslBCIInputScript.setMarker ("FA");
 	}
 }
 
@@ -219,7 +272,7 @@ function setPerformanceLevel() {
 	var renderers: Component[];
 	var mash: MeshRenderer;
 	var color: Color32; ;
-
+	var lastPrefLevel = currentPerfLevel;
 
 	if (failuresInRow >= 2) {
 		failuresInRow = 0;
@@ -244,7 +297,9 @@ function setPerformanceLevel() {
 		successInRow=0;
 	}
 	playAlarmInNeeded();
-
+	if (lastPrefLevel != currentPerfLevel) {
+		lslBCIInputScript.setMarker ("PrefLevel_" + currentPerfLevel);
+	}
 }
 
 function shouldShowAlarmBasedOnPerfLevel() {
@@ -289,6 +344,7 @@ function getRingsColor() {
 function playAlarmInNeeded() {
 	if (shouldShowAlarmBasedOnPerfLevel()) {
 		alarm.Play();
+		lslBCIInputScript.setMarker ("Alarm");
 	}	
 }
 
