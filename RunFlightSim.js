@@ -43,7 +43,7 @@ var upArrowDirecionScript: changeUpDirectionArrow;
 var downArrowDirecionScript: changeDownDirectionArrow;
 var leftArrowDirecionScript: changeLeftDirectionArrow;
 var rightArrowDirecionScript: changeRightDirectionArrow;
-var trialsNumber = 40;
+var trialsNumber = 5;
 
 var arrowsArrayLong = [["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
 ["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
@@ -651,7 +651,7 @@ function EndLevel()
 	eyelinkScript.StopTracker(EDF_filename); //transfer file to current directory with given filename
 	//Application.LoadLevel("Loader"); //Go back to the Loader Scene
 
-	SceneManagement.SceneManager.LoadScene ("N_back_input");
+	SceneManagement.SceneManager.LoadScene ("stress_evaluation");
 
 }
 
