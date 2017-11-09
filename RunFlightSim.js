@@ -43,6 +43,7 @@ var upArrowDirecionScript: changeUpDirectionArrow;
 var downArrowDirecionScript: changeDownDirectionArrow;
 var leftArrowDirecionScript: changeLeftDirectionArrow;
 var rightArrowDirecionScript: changeRightDirectionArrow;
+var trialsNumber = 40;
 
 var arrowsArrayLong = [["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
 ["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
@@ -170,6 +171,9 @@ private var ringAccuracy = new Array();
 
 // CHANGED, FJ, 2015-05-11
 private var lslBCIInputScript; // Online communication with the BCI, here mainly to set markers
+private var level;
+private var condition;
+
 
 //-----------------------//
 // SET UP
@@ -180,15 +184,16 @@ function Start()
 	var audioObjects: Component[];
 	audioObjects = GetComponents(AudioSource);
 	controlNbackScript.initSounds(audioObjects);
-	var level: int = controlNbackScript.getLevel();
+	level = controlNbackScript.getLevel();
+	condition = controlNbackScript.getCondition();
 	if (controlNbackScript.getLevel() == 1) {
-		moveSpeed = 100;
+		moveSpeed = 150;
 	}
 	else if (controlNbackScript.getLevel() == 2) {
-		moveSpeed = 300;
+		moveSpeed = 180;
 	}
 	else {
-		moveSpeed = 250;
+		moveSpeed = 210;
 	}
 
 	// Stop update functions from running while we start up
@@ -362,8 +367,7 @@ function Start()
 	yield WaitForSeconds(2);
 
 	// Changed, FJ, 20160403 - Send start marker with condition
-	lslBCIInputScript.setMarker ("Run_Start" );
-	lslBCIInputScript.setMarker ("Run_Start_Cond_" + expCondition );
+	lslBCIInputScript.setMarker ("RunStart_Condition_" + condition + "_Level_" + level);
 	// --------------------------------------------------------
 
 	flightScript.setSpeed(moveSpeed);
@@ -391,6 +395,10 @@ function Update() {
 		EndLevel();
 		Application.LoadLevel("Loader"); //Go back to the Loader Scene
 		return; //stop executing Update (to avoid, e.g., destroying things twice)
+	}
+
+	if (iNextRing > trialsNumber) {
+		EndLevel();
 	}
 	
 	//SYNC EYELINK AND EEG
@@ -424,8 +432,6 @@ function Update() {
 	// Check if subject has passed the next ring
 	if (transform.position.z > nextUpperRightRingBounds.center.z) 
 	{
-		sendTriggerRingPassed();
-
 		var ringBounds = null;
 		if (currentRing == "UpRight") {
 			ringBounds = nextUpperRightRingBounds;
@@ -440,7 +446,7 @@ function Update() {
 			ringBounds = nextLowerLeftRingBounds;
 		}
 
-		checkIfRingFailedAndSendTriggger(ringBounds);
+		checkIfRingFailedAndSendTrigggers(ringBounds);
 
 		SwitchArrowIfNeeded(iNextRing);
 
@@ -454,36 +460,30 @@ function Update() {
 	}
 }
 
-function checkIfRingFailedAndSendTriggger(ringBounds) {
+function checkIfRingFailedAndSendTrigggers(ringBounds) {
 	if (transform.position.y < ringBounds.min.y || transform.position.y > ringBounds.max.y  ||
 		transform.position.x < ringBounds.min.x || transform.position.x > ringBounds.max.x)
 	{
-		lslBCIInputScript.setMarker (currentRing + "Fail_Size_" + Mathf.Abs(ringBounds.max.y - ringBounds.min.y));
-
-		lslBCIInputScript.setMarker (currentRing + "Fail_Size_" + Mathf.Abs(ringBounds.max.y - ringBounds.min.y) + "_Cond_" + expCondition );
-
-		lslBCIInputScript.setMarker (currentRing + "Fail_Cond_" + expCondition );
+		//lslBCIInputScript.setMarker (currentRing + "Fail_Size_" + Mathf.Abs(ringBounds.max.y - ringBounds.min.y));
+		var ringSize = Mathf.Abs(ringBounds.max.y - ringBounds.min.y);
+		lslBCIInputScript.setMarker("RingFailed_Condition_" + condition + "_Level_" + level + "_Size_" + ringSize);	
 
 		controlNbackScript.setFailure();
 
 		return true;
 	}
-	controlNbackScript.setSuccess();
-	return false;
-
+	else {
+		sendTriggerRingPassed(ringBounds);
+		controlNbackScript.setSuccess();
+		return false;
+	}
 }
 
-function sendTriggerRingPassed() {
+function sendTriggerRingPassed(ringBounds) {
 	if (iNextRing <= ( LowerRightRingArray.length-1 ) )
 	{
-		// CHANGED, FJ, 2015-05-11
-		// Inject Marker into the data stream whenever the plane passes a ring.
-		// Markers are written via LSL_BCI_Input, which uses the framework labstreaminglayer.
-		lslBCIInputScript.setMarker (currentRing + "RingPassed_Size_" + Mathf.Abs(nextLowerRightRingBounds.max.y - nextLowerRightRingBounds.min.y));
-
-		lslBCIInputScript.setMarker (currentRing + "RingPassed_Size_" + Mathf.Abs(nextLowerRightRingBounds.max.y - nextLowerRightRingBounds.min.y) + "_Cond_" + expCondition );
-
-		lslBCIInputScript.setMarker (currentRing + "RingPassed_Cond_" + expCondition );
+		var ringSize = Mathf.Abs(ringBounds.max.y - ringBounds.min.y);
+		lslBCIInputScript.setMarker("RingPassed_Condition_" + condition + "_Level_" + level + "_Size_" + ringSize);
 
 	}
 }
@@ -583,8 +583,7 @@ function SwitchArrowIfNeeded(ringIndex)
 function EndLevel() 
 {
 	// Changed, FJ, 20160403 - Send start marker with condition
-	lslBCIInputScript.setMarker ("Run_End" );
-	lslBCIInputScript.setMarker ("Run_End_Cond_" + expCondition );
+	lslBCIInputScript.setMarker ("RunEnd_Condition_" + condition + "_Level_" + level);
 	// --------------------------------------------------------
 
 	//Compute Performance
@@ -605,20 +604,20 @@ function EndLevel()
 		courseAccuracy = 0;
 	}
 	
-	loaderScript.courseCompleted = courseCompleted.ToString();
-	loaderScript.courseAccuracy = courseAccuracy.ToString();
+	//loaderScript.courseCompleted = courseCompleted.ToString();
+	//loaderScript.courseAccuracy = courseAccuracy.ToString();
 
 
 	// Changed, FJ, 20160915 - Print end percentage, set marker with End Percentage!!
 
-	print ( "\n#########################################\n\n" );
+	//print ( "\n#########################################\n\n" );
 
-	print ( "\n # RESULT: Course completed >> " + loaderScript.courseCompleted + "% <<" );
+	//print ( "\n # RESULT: Course completed >> " + loaderScript.courseCompleted + "% <<" );
 
-	print ( "\n#########################################\n\n" );
+	//print ( "\n#########################################\n\n" );
 
-	lslBCIInputScript.setMarker ("Run_End_Comp_" + loaderScript.courseCompleted );
-	lslBCIInputScript.setMarker ("Run_End_Cond_" + expCondition + "_Comp_" + loaderScript.courseCompleted );
+	//lslBCIInputScript.setMarker ("Run_End_Comp_" + loaderScript.courseCompleted );
+	//lslBCIInputScript.setMarker ("Run_End_Cond_" + expCondition + "_Comp_" + loaderScript.courseCompleted );
 
 	// --------------------------------------------------------
 
@@ -627,14 +626,14 @@ function EndLevel()
 
 	var t: System.DateTime = System.DateTime.Now;
 
-	var filePath = "C:/_DATA/BF_CLoop_02_Main/Res_Times_Sub_" + subject + "_" + String.Format("{0:D4}{1:D2}{2:D2}",t.Year,t.Month,t.Day) + ".csv";
+	//var filePath = "C:/_DATA/BF_CLoop_02_Main/Res_Times_Sub_" + subject + "_" + String.Format("{0:D4}{1:D2}{2:D2}",t.Year,t.Month,t.Day) + ".csv";
 
-    var sw : StreamWriter = new StreamWriter ( filePath, true );
+    //var sw : StreamWriter = new StreamWriter ( filePath, true );
 
-    sw.WriteLine ( "" + String.Format("{0:D4}_{1:D2}_{2:D2}_{3:D2}_{4:D2}_{5:D2}",t.Year,t.Month,t.Day,t.Hour,t.Minute,t.Second) + ",   Sub"  + subject + ",   Cond" + expCondition + ",   " + routeFilename + ",   " + loaderScript.courseCompleted + "%,   " + loaderScript.courseAccuracy + "%" );
+   // sw.WriteLine ( "" + String.Format("{0:D4}_{1:D2}_{2:D2}_{3:D2}_{4:D2}_{5:D2}",t.Year,t.Month,t.Day,t.Hour,t.Minute,t.Second) + ",   Sub"  + subject + ",   Cond" + expCondition + ",   " + routeFilename + ",   " + loaderScript.courseCompleted + "%,   " + loaderScript.courseAccuracy + "%" );
 
-    sw.Flush ( );
-    sw.Close ( );
+    //sw.Flush ( );
+    //sw.Close ( );
 
 	// --------------------------------------------------------
 
@@ -650,7 +649,10 @@ function EndLevel()
 //	DestroyAll(); //Clean up objects
 	// Close the tracker and log files (important for saving!)
 	eyelinkScript.StopTracker(EDF_filename); //transfer file to current directory with given filename
-	Application.LoadLevel("Loader"); //Go back to the Loader Scene
+	//Application.LoadLevel("Loader"); //Go back to the Loader Scene
+
+	SceneManagement.SceneManager.LoadScene ("N_back_input");
+
 }
 
 //---END THE LEVEL MANUALLY

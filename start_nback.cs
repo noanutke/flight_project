@@ -10,15 +10,19 @@ public class start_nback : MonoBehaviour {
 	public GameObject level;
 	public GameObject useNback;
 	public GameObject button;
-	public Button start;
+	public Button buttonStart;
+	public Button buttonQuit;
 
 	// Use this for initialization
 	void Start () {
 		level = GameObject.Find ("Placeholder level");
 		useNback = GameObject.Find ("Placeholder use nBack");
-		button = GameObject.Find ("Button");
-		start = button.GetComponent<Button> ();
-		start.onClick.AddListener (onStart);
+		var buttonStartObj = GameObject.Find ("Button_start");
+		var buttonQuitObj = GameObject.Find ("Button_quit");
+		buttonStart = buttonStartObj.GetComponent<Button> ();
+		buttonStart.onClick.AddListener (onStart);
+		buttonQuit = buttonQuitObj.GetComponent<Button> ();
+		buttonQuit.onClick.AddListener (onQuit);
 		//DontDestroyOnLoad(level);
 		//DontDestroyOnLoad(useNback);
 	}
@@ -38,6 +42,10 @@ public class start_nback : MonoBehaviour {
 		GameObject canvas = GameObject.Find ("openning canvas");
 		SceneManager.LoadScene ("FlightSimTest");
 
+	}
+
+	void onQuit() {
+		Application.Quit ();
 	}
 
 

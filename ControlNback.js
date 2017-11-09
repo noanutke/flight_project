@@ -4,6 +4,7 @@ import System.IO;
 var moveMarkerScript: NewBehaviourScript;
 
 var n: int = 1;
+var trialNumber = 0;
 
 var perf1 = Color32(0,255,0,1);
 var perf2 = Color32(128,255,0,1);
@@ -48,11 +49,21 @@ var prefab1: Transform;
 var prefab2: Transform;
 var level: int;
 var withStress: boolean;
+var condition: String;
 
 private var lslBCIInputScript: LSL_BCI_Input;
 
 function getLevel() {
 	return level;
+}
+
+function getCondition() {
+	if (withStress == true) {
+		condition = "stress";
+		return  "stress";
+	}
+	condition = "noStress";
+	return "noStress";
 }
 
 function getOpenningParameters () {
@@ -105,7 +116,7 @@ function Start () {
 	letters = ReadInPointsForNback(nBackFilename);
 	yield WaitForSeconds(2);
 	InvokeRepeating("readNextLetter", 0, 2.5);
-	InvokeRepeating("setPerformanceLevel", 0.5, 2.5);
+	InvokeRepeating("setPerformanceLevel", 0.49999, 2.5);
 	//lslBCIInputScript = gameObject.GetComponent(LSL_BCI_Input); 
 }
 
@@ -131,8 +142,18 @@ function setLSL(lslObject: LSL_BCI_Input) {
 	lslBCIInputScript = lslObject;
 }
 
+function EndLevel() 
+{
+	// Changed, FJ, 20160403 - Send start marker with condition
+	lslBCIInputScript.setMarker ("RunEnd_Condition_" + condition + "_Level_" + level);
+	SceneManagement.SceneManager.LoadScene ("N_back_input");
+}
+
 function readNextLetter() {
-	
+	trialNumber++;
+	if (trialNumber > 40) {
+		EndLevel();
+	}
 	buttonPressedForLastTrial = buttonPressedForTrial;
 	targetPresentedLastTrial = targetPresented;
 	tooSlowLastTrial = tooSlow;
@@ -164,7 +185,7 @@ function readNextLetter() {
 	else if (letter == "8") {
 		eight.Play();
 	}
-	lslBCIInputScript.setMarker ("Letter");
+	lslBCIInputScript.setMarker ("Letter_" + letter);
 	targetPresented = isTarget();
 	currentLetter += 1;
 	lastLetterTime = Time.time;
@@ -242,16 +263,16 @@ function buttonPressed() {
 		if (rt * 1000 > expectedRT) {
 			tooSlow = true;
 			setFailure();
-			lslBCIInputScript.setMarker ("HIT");
+			lslBCIInputScript.setMarker ("nBackHIT");
 		}
 		else {
 			setSuccess();
-			lslBCIInputScript.setMarker ("HIT");
+			lslBCIInputScript.setMarker ("nBackHIT");
 		}
 	}
 	else {
 		setFailure();
-		lslBCIInputScript.setMarker ("FA");
+		lslBCIInputScript.setMarker ("nBackFA");
 	}
 }
 
@@ -278,6 +299,7 @@ function setPerformanceLevel() {
 		failuresInRow = 0;
 		if (currentPerfLevel < 5) {
 			currentPerfLevel += 1;
+			lslBCIInputScript.setMarker ("PerfChanged_" + currentPerfLevel);
 		}
 
 		color = getRingsColor();
@@ -289,6 +311,7 @@ function setPerformanceLevel() {
 	else if (successInRow >= 2) {
 		if (currentPerfLevel > 1) {
 			currentPerfLevel -= 1;
+			lslBCIInputScript.setMarker ("PerfChanged_" + currentPerfLevel);
 		}
 		color = getRingsColor();
 		renderers = prefab1.GetComponentsInChildren(MeshRenderer);
@@ -341,6 +364,10 @@ function getRingsColor() {
 	return perf5;
 }
 
+function getPerfLevel() {
+	return currentPerfLevel;
+}
+
 function playAlarmInNeeded() {
 	if (shouldShowAlarmBasedOnPerfLevel()) {
 		alarm.Play();
@@ -349,7 +376,13 @@ function playAlarmInNeeded() {
 }
 
 function setFailureIfLastTrialMissed() {
-	if (!buttonPressedForLastTrial && targetPresentedLastTrial) {
-		setFailure();
+	if (!buttonPressedForLastTrial) {
+		if (targetPresentedLastTrial) {
+			setFailure();
+			lslBCIInputScript.setMarker ("nBackMISS");
+		}
+		else {
+			lslBCIInputScript.setMarker ("nBackCorrectRejection");
+		}
 	}
 }
