@@ -96,7 +96,10 @@ function getOpenningParameters () {
 	else {
 		withStress = false;
 	}
-	GameObject.Find ("openning canvas").SetActive(false);
+	var canvas = GameObject.Find ("openning canvas");
+	var renderer = canvas.GetComponent(CanvasGroup) as CanvasGroup;
+	renderer.alpha = 0f;
+	renderer.blocksRaycasts = false;
 }
 
 function Awake() {

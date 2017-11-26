@@ -43,7 +43,7 @@ var upArrowDirecionScript: changeUpDirectionArrow;
 var downArrowDirecionScript: changeDownDirectionArrow;
 var leftArrowDirecionScript: changeLeftDirectionArrow;
 var rightArrowDirecionScript: changeRightDirectionArrow;
-var trialsNumber = 5;
+var trialsNumber = 60;
 
 var arrowsArrayLong = [["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
 ["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
@@ -60,6 +60,7 @@ var arrowsArrayLong = [["up_pointingUp", "left_pointingRight"], ["up_pointingUp"
 ["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"]];
 
 var currentRing = "UpRight";
+var width = 0;
 
 var subject = 0;
 var session = 0;
@@ -104,7 +105,7 @@ var gain_x = 1.0; //for eyelink calibration
 var gain_y = 1.0; //for eyelink calibration
 
 // Control Parameters
-var moveSpeed = 200.0; //motion speed
+var moveSpeed = 180.0; //motion speed
 var pitchSpeed = 100.0; //for turning (vertically)
 var lockRoll = false;
 var lockXpos = false;
@@ -187,15 +188,14 @@ function Start()
 	level = controlNbackScript.getLevel();
 	condition = controlNbackScript.getCondition();
 	if (controlNbackScript.getLevel() == 1) {
-		moveSpeed = 150;
+		moveSpeed = 200;
 	}
 	else if (controlNbackScript.getLevel() == 2) {
-		moveSpeed = 180;
+		moveSpeed = 200;
 	}
 	else {
-		moveSpeed = 210;
+		moveSpeed = 200;
 	}
-
 	// Stop update functions from running while we start up
 	this.enabled = false;
 	eyelinkScript = gameObject.AddComponent(eyelink); // to interface with eye tracker
@@ -334,10 +334,21 @@ function Start()
 	// Put all rings in scene 
 
 	var centerWidths: float[] = upperCenterWidths2.ToBuiltin(float) as float[]; 
- 	UpperRightRingArray = PlaceRings(centerPrefab,upperRightRingPositions, ringWidths, ringWidths, ringDepth, true);
- 	LowerRightRingArray = PlaceRings(ringPrefab,lowerRightRingPositions, ringWidths, ringWidths, ringDepth, true);
- 	UpperLeftRingArray = PlaceRings(centerPrefab,upperLeftRingPositions, ringWidths, ringWidths, ringDepth, true);
- 	LowerLeftRingArray = PlaceRings(ringPrefab,lowerLeftRingPositions, ringWidths, ringWidths, ringDepth, true);
+
+	if (controlNbackScript.getLevel() == 1) {
+		width = 90;
+	}
+	else if (controlNbackScript.getLevel() == 2) {
+		width = 60;
+	}
+	else {
+		width = 30;
+	}
+
+ 	UpperRightRingArray = PlaceRings(centerPrefab,upperRightRingPositions, width, width, ringDepth, true);
+ 	LowerRightRingArray = PlaceRings(ringPrefab,lowerRightRingPositions, width, width, ringDepth, true);
+ 	UpperLeftRingArray = PlaceRings(centerPrefab,upperLeftRingPositions, width, width, ringDepth, true);
+ 	LowerLeftRingArray = PlaceRings(ringPrefab,lowerLeftRingPositions, width, width, ringDepth, true);
  	// RingArray = PlaceRings(ringPrefab,ringPositions, 110, ringWidths, ringDepth, areAllRingsVisible);
  	//CenterArray = PlaceRings(centerPrefab,ringPositions, centerWidths, centerWidths, centerDepth, areAllRingsVisible);
  	// initialize nextRingBounds
@@ -708,20 +719,20 @@ function ReadInPoints(fileName: String, heightToAdd: float, horizontalToAdd: flo
 //-----------------------//
 // Place rings at given points and log their positions
 //-----------------------//
-function PlaceRings(prefabObj: Transform, positions: Vector3[], ringWidth: float[], ringHeight: float[], ringDepthConstant: float, isVisible: boolean) {
+function PlaceRings(prefabObj: Transform, positions: Vector3[], ringWidth: float, ringHeight: float, ringDepthConstant: float, isVisible: boolean) {
 	
 	// eyelinkScript must be initialized before this function is called (TO DO: insert check for this)
 	eyelinkScript.write("----- LOAD TRIAL -----");
 	AllRings = new Array();
 	for (i=0;i<positions.length;i++) {
 		//renderer = prefabObj.GetComponent('Renderer').material.color = color;
-		eyelinkScript.write("Created Object # " + (i+1) + " Ring Ring Ring " + positions[i] + " (" + ringWidths[i] + ", " + ringHeight[i] + ", " + ringDepth + ", 0)"); //"Ring Ring Ring" 
+		eyelinkScript.write("Created Object # " + (i+1) + " Ring Ring Ring " + positions[i] + " (" + ringWidth + ", " + ringHeight + ", " + ringDepth + ", 0)"); //"Ring Ring Ring" 
 		thisRing = Instantiate(prefabObj, positions[i], Quaternion.identity); // place ring in sceneindicates name/type/tag are all "Ring"
 
 		//renderer.material.color.r = color.r;
 		//renderer.material.color.g = color.g;
 		//renderer.material.color.b = color.b;
-		thisRing.transform.localScale = Vector3(ringWidth[i],ringHeight[i],ringDepthConstant); // scale to match specified width/height/depth
+		thisRing.transform.localScale = Vector3(ringWidth,ringHeight,ringDepthConstant); // scale to match specified width/height/depth
 		ChangeVisibility(thisRing,isVisible);
 		AllRings.Push(thisRing); // keep track of rings in scene
 	}

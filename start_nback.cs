@@ -15,6 +15,13 @@ public class start_nback : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
+		Time.timeScale = 1;
+		GameObject canvas =  GameObject.Find ("Canvas_load");
+		if (canvas) {
+			CanvasGroup renderer = canvas.GetComponent<CanvasGroup> ();
+			renderer.alpha = 0f;
+			renderer.blocksRaycasts = false;
+		}
 		level = GameObject.Find ("Placeholder level");
 		useNback = GameObject.Find ("Placeholder use nBack");
 		var buttonStartObj = GameObject.Find ("Button_start");
@@ -37,14 +44,26 @@ public class start_nback : MonoBehaviour {
 	}
 
 	void onStart() {
-		InputField levelText = level.GetComponent<InputField> ();
-		InputField useNbackText = useNback.GetComponent<InputField> ();
-		GameObject canvas = GameObject.Find ("openning canvas");
+		GameObject stressCanvas =  GameObject.Find ("Canvas_stress");
+		if (stressCanvas) {
+			stressCanvas.SetActive (false);
+		}
 		SceneManager.LoadScene ("FlightSimTest");
-
 	}
 
 	void onQuit() {
+		GameObject stressCanvas =  GameObject.Find ("Canvas_stress");
+		if (stressCanvas) {
+			stressEvaluation stressEvaluationClass = stressCanvas.GetComponent<stressEvaluation> ();
+
+			stressEvaluationClass.writeValuesToFile ();
+		}
+		GameObject loadCanvas =  GameObject.Find ("Canvas_load");
+		if (loadCanvas) {
+			loadEvaluation loadEvaluationClass = loadCanvas.GetComponent<loadEvaluation> ();
+
+			loadEvaluationClass.writeValuesToFile ();
+		}
 		Application.Quit ();
 	}
 
