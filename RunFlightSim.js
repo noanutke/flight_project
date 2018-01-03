@@ -39,11 +39,12 @@ import System.IO;
 
 //---DECLARE GLOBAL VARIABLES
 var controlNbackScript: ControlNback;
+var dataSaverScript: dataSaver;
 var upArrowDirecionScript: changeUpDirectionArrow;
 var downArrowDirecionScript: changeDownDirectionArrow;
 var leftArrowDirecionScript: changeLeftDirectionArrow;
 var rightArrowDirecionScript: changeRightDirectionArrow;
-var trialsNumber = 60;
+var trialsNumber = 70;
 
 var arrowsArrayLong = [["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
 ["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
@@ -53,6 +54,18 @@ var arrowsArrayLong = [["up_pointingUp", "left_pointingRight"], ["up_pointingUp"
 ["up_pointingUp", "right_pointingLeft"],["down_pointingUp", "right_pointingRight"],
 ["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"],["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
 ["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
+["up_pointingUp", "right_pointingLeft"],["down_pointingUp", "right_pointingRight"],
+["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"],["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
+["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
+["up_pointingUp", "right_pointingLeft"],["down_pointingUp", "right_pointingRight"],
+["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"],
+["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"],["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
+["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
+["up_pointingUp", "right_pointingLeft"],["down_pointingUp", "right_pointingRight"],
+["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"],["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
+["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
+["up_pointingUp", "right_pointingLeft"],["down_pointingUp", "right_pointingRight"],
+["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"],
 ["up_pointingUp", "right_pointingLeft"],["down_pointingUp", "right_pointingRight"],
 ["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"],["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
 ["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
@@ -145,7 +158,6 @@ var eight;
 var alarm;
 var markerPositions: float[];
 var letters: String[];
-var nBackFilename = "NedeConfig/1-back.txt";
 var audioFiles = [];
 
 
@@ -172,30 +184,134 @@ private var ringAccuracy = new Array();
 
 // CHANGED, FJ, 2015-05-11
 private var lslBCIInputScript; // Online communication with the BCI, here mainly to set markers
-private var level;
+private var nLevel;
+private var blockOrdinal;
+private var stroopCondition;
+private var ringSize;
 private var condition;
+private var calibration;
+
+private var arrowsAmount = 9;
+private var firstRingPassed = false;
+private var arrowsArray = new Array();
+
+
+function createArrowsArray(stroopCondition: String) {
+	var congOptionsVertical = new Array("up_pointingUp", "down_pointingDown");
+	var congOptionsHorizontal = new Array("right_pointingRight", "left_pointingLeft");
+	var incongOptionsVertical = new Array("up_pointingDown", "down_pointingUp");
+	var incongOptionsHorizontal = new Array("left_pointingRight", "right_pointingLeft");
+
+
+	var uniqueIndices = new Array();
+	var finishedRandomSelection = false;
+	while (finishedRandomSelection == false) {
+		var index = Mathf.Floor(Random.Range(0.0,8.9));
+		if (uniqueIndices.length > 0) {
+			if (uniqueIndices[0] != index) {
+				uniqueIndices.Push(index);
+				finishedRandomSelection = true;
+			}
+		}
+		else {
+			uniqueIndices.Push(index);
+		}
+	}
+
+
+	uniqueIndices.Sort();
+	if (stroopCondition == "cong") {
+		arrowsArray = innerCreationOfArrowsArray(congOptionsVertical, congOptionsHorizontal, incongOptionsVertical,
+					incongOptionsHorizontal, uniqueIndices);
+	}
+	else {
+		arrowsArray = innerCreationOfArrowsArray(incongOptionsVertical, incongOptionsHorizontal, congOptionsVertical,
+			congOptionsHorizontal, uniqueIndices);
+	}
+
+	return arrowsArray;
+}
+
+function innerCreationOfArrowsArray(verticalMajorityOptions, horizontalMajorityOptions, verticalMinorityOptions,
+		horizontalMinorityOptions, uniqueIndices) {
+			var currentUniqueIndex = 0;
+			var arrowsArray = new Array();
+			var currentIndex = 0;
+			var horizontal = Mathf.Floor(Random.Range(0,1.9));
+			var vertical = Mathf.Floor(Random.Range(0,1.9));
+			if (uniqueIndices[0] == 0) {
+				arrowsArray.Push(new Array(verticalMinorityOptions[vertical], horizontalMinorityOptions[horizontal]));
+				currentUniqueIndex++;
+			}
+			else {
+				arrowsArray.Push(new Array(verticalMajorityOptions[vertical], horizontalMajorityOptions[horizontal]));
+			}
+
+			for (currentIndex = 1; currentIndex < arrowsAmount ; currentIndex ++ ) {
+				var randomSelectionDone = false;
+				while (randomSelectionDone == false) {
+					vertical = Mathf.Floor(Random.Range(0,1.9));
+					horizontal = Mathf.Floor(Random.Range(0,1.9));
+
+
+					if (currentUniqueIndex < uniqueIndices.length && uniqueIndices[currentUniqueIndex] == currentIndex) {
+
+						if (arrowsArray[currentIndex-1][0] != verticalMinorityOptions[vertical]
+							 || arrowsArray[currentIndex-1][1] != horizontalMinorityOptions[horizontal]) {
+							randomSelectionDone = true;
+
+							arrowsArray.Push(new Array(verticalMinorityOptions[vertical],
+							horizontalMinorityOptions[horizontal]));
+
+							currentUniqueIndex++;
+						}
+				
+					}
+					else {
+						if (arrowsArray[currentIndex-1][0] != verticalMajorityOptions[vertical]
+							 || arrowsArray[currentIndex-1][1] != horizontalMajorityOptions[horizontal]) {
+								randomSelectionDone = true;
+
+								arrowsArray.Push(new Array(verticalMajorityOptions[vertical],
+								horizontalMajorityOptions[horizontal]));
+	
+						}
+
+					}
+
+				}
+
+			}
+			return arrowsArray;
+		}
 
 
 //-----------------------//
-// SET UP
+//  UP
 //-----------------------//
 function Start() 
 {	
-
+	firstRingPassed = false;
+	var ob = GameObject.Find("dataSaver");
+	dataSaverScript = ob.GetComponent(dataSaver) as dataSaver; 
 	var audioObjects: Component[];
 	audioObjects = GetComponents(AudioSource);
+
+	controlNbackScript.setPrefabRings(ringPrefab, centerPrefab);
+	controlNbackScript.Start();
+	isPractice = controlNbackScript.isPractice;
 	controlNbackScript.initSounds(audioObjects);
-	level = controlNbackScript.getLevel();
-	condition = controlNbackScript.getCondition();
-	if (controlNbackScript.getLevel() == 1) {
-		moveSpeed = 200;
-	}
-	else if (controlNbackScript.getLevel() == 2) {
-		moveSpeed = 200;
-	}
-	else {
-		moveSpeed = 200;
-	}
+	nLevel = dataSaverScript.getN();
+	blockOrdinal = dataSaverScript.getType();
+	stroopCondition = dataSaverScript.getStroopCondition();
+	condition = dataSaverScript.condition;
+	calibration = false;
+
+	moveSpeed = dataSaverScript.moveSpeed;
+
+	var arrowsArray = createArrowsArray(stroopCondition);
+
+
 	// Stop update functions from running while we start up
 	this.enabled = false;
 	eyelinkScript = gameObject.AddComponent(eyelink); // to interface with eye tracker
@@ -222,7 +338,7 @@ function Start()
 	WhiteSquare = Resources.Load("WHITESQUARE");
 	BlackSquare = Resources.Load("BLACKSQUARE");
 
-	controlNbackScript.setPrefabRings(ringPrefab, centerPrefab);
+
 
 	//------- EYELINK
 	// Decide on filename
@@ -335,10 +451,11 @@ function Start()
 
 	var centerWidths: float[] = upperCenterWidths2.ToBuiltin(float) as float[]; 
 
-	if (controlNbackScript.getLevel() == 1) {
+	ringSize = dataSaverScript.getRingSize();
+	if (ringSize == "big") {
 		width = 90;
 	}
-	else if (controlNbackScript.getLevel() == 2) {
+	else if (ringSize == "medium") {
 		width = 60;
 	}
 	else {
@@ -378,10 +495,12 @@ function Start()
 	yield WaitForSeconds(2);
 
 	// Changed, FJ, 20160403 - Send start marker with condition
-	lslBCIInputScript.setMarker ("RunStart_Condition_" + condition + "_Level_" + level);
+	lslBCIInputScript.setMarker ("RunStart_Condition_" + condition + "_nLevel_" + nLevel + "_ringSize_" + ringSize + 
+		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition + "_isPractice_" + isPractice);
 	// --------------------------------------------------------
 
 	flightScript.setSpeed(moveSpeed);
+	dataSaverScript.currentBlockIndex += 1;
 	flightScript.StartFlight(controlNbackScript);
 	//controlNbackScript.startNback();
 
@@ -457,9 +576,15 @@ function Update() {
 			ringBounds = nextLowerLeftRingBounds;
 		}
 
-		checkIfRingFailedAndSendTrigggers(ringBounds);
 
 		SwitchArrowIfNeeded(iNextRing);
+		if (firstRingPassed == true) {			
+			checkIfRingFailedAndSendTrigggers(ringBounds);
+		}
+		else {
+			lslBCIInputScript.setMarker("FirstRingPassed_Condition_" + condition + "_nLevel_" + nLevel + "_ringSize_" + ringSize + 
+			"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);	
+		}
 
 		iNextRing++; // increment the ring number
 		ChangeVisibility(UpperRightRingArray[iNextRing],true);
@@ -468,6 +593,8 @@ function Update() {
 		nextLowerRightRingBounds = ObjectInfo.ObjectBounds(LowerRightRingArray[iNextRing].gameObject); // get new ring bounds
 		nextUpperLeftRingBounds = ObjectInfo.ObjectBounds(UpperLeftRingArray[iNextRing].gameObject); // get new ring bounds
 		nextLowerLeftRingBounds = ObjectInfo.ObjectBounds(LowerLeftRingArray[iNextRing].gameObject);
+
+		firstRingPassed = true;
 	}
 }
 
@@ -477,15 +604,25 @@ function checkIfRingFailedAndSendTrigggers(ringBounds) {
 	{
 		//lslBCIInputScript.setMarker (currentRing + "Fail_Size_" + Mathf.Abs(ringBounds.max.y - ringBounds.min.y));
 		var ringSize = Mathf.Abs(ringBounds.max.y - ringBounds.min.y);
-		lslBCIInputScript.setMarker("RingFailed_Condition_" + condition + "_Level_" + level + "_Size_" + ringSize);	
+		lslBCIInputScript.setMarker("RingFailed_Condition_" + condition + "_nLevel_" + nLevel + "_ringSize_" + ringSize + 
 
-		controlNbackScript.setFailure();
+		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition + "_isPractice_" + isPractice);	
+
+		controlNbackScript.setRingFailure();
+		if(calibration == true) {
+			moveSpeed = controlNbackScript.getSpeed();
+			flightScript.speed = moveSpeed;
+		}
 
 		return true;
 	}
 	else {
 		sendTriggerRingPassed(ringBounds);
-		controlNbackScript.setSuccess();
+		controlNbackScript.setRingSuccess();
+		if(calibration == true) {
+			moveSpeed = controlNbackScript.getSpeed();
+			flightScript.speed = moveSpeed;
+		}
 		return false;
 	}
 }
@@ -494,7 +631,8 @@ function sendTriggerRingPassed(ringBounds) {
 	if (iNextRing <= ( LowerRightRingArray.length-1 ) )
 	{
 		var ringSize = Mathf.Abs(ringBounds.max.y - ringBounds.min.y);
-		lslBCIInputScript.setMarker("RingPassed_Condition_" + condition + "_Level_" + level + "_Size_" + ringSize);
+		lslBCIInputScript.setMarker("RingPassed_Condition_" + condition + "_nLevel_" + nLevel + "_ringSize_" + ringSize + 
+		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition + "_isPractice_" + isPractice);
 
 	}
 }
@@ -517,14 +655,14 @@ function sendMarkerWithRingSize ( sMarkerName : String )
 
 function SwitchArrowIfNeeded(ringIndex)
 {	
-	if (arrowsArrayLong.length <= ringIndex) {
-		print (ringIndex);
+	if (arrowsArray.length <= ringIndex) {
+		return;
 	}
-	currentArrow = arrowsArrayLong[ringIndex];
+	currentArrow = arrowsArray[ringIndex];
 	if (currentArrow[0] == "up_pointingUp")	// show up direction arrow in up position
 	{
 		currentRing = "Up";
-		position = Vector3(0.0,1.0,0.0);
+		position = Vector3(0.0,9.0,0.0);
 		upArrowDirecionScript.ChangePosition(position);
 		upArrowDirecionScript.Show();
 		downArrowDirecionScript.Hide();
@@ -532,7 +670,7 @@ function SwitchArrowIfNeeded(ringIndex)
 	if (currentArrow[0] == "up_pointingDown")	// show up direction arrow in down position
 	{
 		currentRing = "Down";
-		position = Vector3(0.0,1.0,0.0);
+		position = Vector3(0.0,9.0,0.0);
 		downArrowDirecionScript.ChangePosition(position);
 		downArrowDirecionScript.Show();
 		upArrowDirecionScript.Hide();
@@ -540,7 +678,7 @@ function SwitchArrowIfNeeded(ringIndex)
 	if (currentArrow[0] == "down_pointingUp")	// show down direction arrow in up position
 	{
 		currentRing = "Up";
-		position = Vector3(0.0,-4.0,0.0);
+		position = Vector3(0.0,-8.0,0.0);
 		upArrowDirecionScript.ChangePosition(position);
 		upArrowDirecionScript.Show();
 		downArrowDirecionScript.Hide();
@@ -548,7 +686,7 @@ function SwitchArrowIfNeeded(ringIndex)
 	if (currentArrow[0] == "down_pointingDown")	// show down direction arrow in down position
 	{
 		currentRing = "Down";
-		position = Vector3(0.0,-4.0,0.0);
+		position = Vector3(0.0,-8.0,0.0);
 		downArrowDirecionScript.ChangePosition(position);
 		upArrowDirecionScript.Hide();
 		downArrowDirecionScript.Show();
@@ -556,7 +694,7 @@ function SwitchArrowIfNeeded(ringIndex)
 	if (currentArrow[1] == "left_pointingRight")	// show up direction arrow in up position
 	{
 		currentRing += "Right";
-		position = Vector3(-2.0,-1.5,0.0);
+		position = Vector3(-15,-1.5,0.0);
 		rightArrowDirecionScript.ChangePosition(position);
 		rightArrowDirecionScript.Show();
 		leftArrowDirecionScript.Hide();
@@ -564,7 +702,7 @@ function SwitchArrowIfNeeded(ringIndex)
 	if (currentArrow[1] == "right_pointingRight")	// show up direction arrow in up position
 	{
 		currentRing += "Right";
-		position = Vector3(2.0,-1.5,0.0);
+		position = Vector3(15,-1.5,0.0);
 		rightArrowDirecionScript.ChangePosition(position);
 		rightArrowDirecionScript.Show();
 		leftArrowDirecionScript.Hide();
@@ -572,7 +710,7 @@ function SwitchArrowIfNeeded(ringIndex)
 	if (currentArrow[1] == "right_pointingLeft")	// show up direction arrow in up position
 	{
 		currentRing += "Left";
-		position = Vector3(2.0,-1.5,0.0);
+		position = Vector3(15,-1.5,0.0);
 		leftArrowDirecionScript.ChangePosition(position);
 		leftArrowDirecionScript.Show();
 		rightArrowDirecionScript.Hide();
@@ -580,7 +718,7 @@ function SwitchArrowIfNeeded(ringIndex)
 	if (currentArrow[1] == "left_pointingLeft")	// show up direction arrow in up position
 	{
 		currentRing += "Left";
-		position = Vector3(-2.0,-1.5,0.0);
+		position = Vector3(-15,-1.5,0.0);
 		leftArrowDirecionScript.ChangePosition(position);
 		leftArrowDirecionScript.Show();
 		rightArrowDirecionScript.Hide();
@@ -594,7 +732,8 @@ function SwitchArrowIfNeeded(ringIndex)
 function EndLevel() 
 {
 	// Changed, FJ, 20160403 - Send start marker with condition
-	lslBCIInputScript.setMarker ("RunEnd_Condition_" + condition + "_Level_" + level);
+	lslBCIInputScript.setMarker ("RunEnd_Condition_" + condition + "_level_" + nLevel + "_ringSize_" + ringSize +
+		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition + "_isPractice_" + isPractice);
 	// --------------------------------------------------------
 
 	//Compute Performance
@@ -662,6 +801,17 @@ function EndLevel()
 	eyelinkScript.StopTracker(EDF_filename); //transfer file to current directory with given filename
 	//Application.LoadLevel("Loader"); //Go back to the Loader Scene
 
+	/*
+	var canvasStress = GameObject.Find ("Canvas_stress");
+	if (canvasStress) {
+		var rendererStress = canvasStress.GetComponent(CanvasGroup) as CanvasGroup;
+		rendererStress.alpha = 1f;
+		rendererStress.blocksRaycasts = true;
+		canvasStress.setActive(true);
+	}
+	else {
+		SceneManagement.SceneManager.LoadScene ("stress_evaluation");
+	}*/
 	SceneManagement.SceneManager.LoadScene ("stress_evaluation");
 
 }

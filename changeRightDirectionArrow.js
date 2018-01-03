@@ -1,7 +1,7 @@
 ﻿#pragma strict
 
 function Start () {
-
+	this.Hide();
 }
 
 function Update () {

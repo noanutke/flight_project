@@ -1,9 +1,19 @@
 ﻿#pragma strict
 import System.IO;
+import System.Collections.Generic;
+
 
 var moveMarkerScript: NewBehaviourScript;
+var dataSaverScript: dataSaver;
 
-var n: int = 1;
+public static var finishedBlocksInCondition: boolean;
+public static var n: String = '1';
+public static var blockOrdinal = "a";
+public static var targetLetter = "1";
+public static var ringSize = "big";
+public static var stroopCondition = "cong";
+public var isPractice = false;
+
 var trialNumber = 0;
 
 var perf1 = Color32(0,255,0,1);
@@ -32,7 +42,9 @@ var eight: AudioSource;
 var alarm: AudioSource;
 //var markerPositions: float[];
 var letters: String[];
-var nBackFilename = "NedeConfig/1-back.txt";
+var colors: String[];
+var sounds: String[];
+
 var audioFiles = [];
 var currentLetter: int = 0;
 var buttonPressedForTrial = false;
@@ -45,16 +57,39 @@ var tooSlowLastTrial = false;
 var lastLetterTime = 0;
 var successInRow = 0;
 var failuresInRow = 0;
+var flightFailures = 0;
+var flightSuccess = 0;
+var nBackFailures = 0;
 var prefab1: Transform;
 var prefab2: Transform;
-var level: int;
-var withStress: boolean;
-var condition: String;
+var nBackTrialsAmount = 12;
+
+public static var withStress: boolean;
+public static var withNback: boolean;
+public static var order: int;
+var calibration: boolean;
+public static var condition: String;
+var maxFailuresInRow = 1;
+var nBackFailure = false;
+var ringFailure = true;
+public static var moveSpeed :int;
+var ringsCountForCalibration = 0;
+var ringsFailuresCountForCalibration = 0;
+var speedInput: UI.Text;
+
+var nBackFilename = "";
+var invoked = false;
+
+
 
 private var lslBCIInputScript: LSL_BCI_Input;
 
 function getLevel() {
-	return level;
+	return n;
+}
+
+function getCalibration() {
+	return calibration;
 }
 
 function getCondition() {
@@ -71,67 +106,167 @@ function getOpenningParameters () {
 	var useNbackInput = useNbackObj.GetComponent(UI.Text) as UI.Text;
 	var levelInputObj =  GameObject.Find ("TextLevel");
 	var levelInput = levelInputObj.GetComponent(UI.Text) as UI.Text;
+	var calibrationInputObj =  GameObject.Find ("TextCalibration");
+	var calibrationInput = calibrationInputObj.GetComponent(UI.Text) as UI.Text;
+	var speedInputObj =  GameObject.Find ("TextSpeed");
+	speedInput = speedInputObj.GetComponent(UI.Text) as UI.Text;
+
+	var conditionObj =  GameObject.Find ("TextBaseCondition");
+	var conditionInput = conditionObj.GetComponent(UI.Text) as UI.Text;
+
+	var orderObj =  GameObject.Find ("TextOrder");
+	var orderInput = orderObj.GetComponent(UI.Text) as UI.Text;
+
+	var speedPlaceHolderObj =  GameObject.Find ("Placeholder use speed");
+	var speedPlaceHolderInput = speedPlaceHolderObj.GetComponent(UI.Text) as UI.Text;
 	var levelText = levelInput.text;
-	var stressText = useNbackInput.text;
+	var useNbackText = useNbackInput.text;
+	var calibrationText = calibrationInput.text;
+	var speedText = speedInput.text;
+	var speedPlaceHolderText = speedPlaceHolderInput.text;
 
-	if (levelText == '1') {
-		n=1;
-		level=1;
-		nBackFilename = "NedeConfig/" + levelText + "-back.txt";
-	}
-	else if (levelText == '2') {
-		n=2;
-		level=2;
-		nBackFilename = "NedeConfig/" + levelText + "-back.txt";
-	}
-	else {
-		n=3;
-		level=3;
-		nBackFilename = "NedeConfig/" + levelText + "-back.txt";
-	}
+	var baseConditionText = conditionInput.text;
+	var orderText = orderInput.text;
 
-	if (stressText == "yes") {
-		withStress = true;
-	}
-	else {
+
+	if (baseConditionText == "yes") {
 		withStress = false;
 	}
+	else {
+		withStress = true;
+	}
+	moveSpeed = parseInt(speedText);
+
+	dataSaverScript.restartBlocks();
+	if (orderText == "1") {
+		withNback = true;
+		order = 1;
+		createBlocksOrderFromFile("n-back files/" + "order" + orderText + ".txt");
+	}
+	else if (orderText == "2") {
+		withNback = true;
+		order = 2;
+		createBlocksOrderFromFile("n-back files/" + "order" + orderText + ".txt");
+		
+	}
+	else {
+		isPractice = true;
+		dataSaverScript.showSuccessRate = true;
+		nBackFilename = "n-back files/" + levelText+ "-back-cong-a-big.txt";
+
+		var nBackStatus = "";
+		if (useNbackText == "yes") {
+			withNback = true;
+			nBackStatus = "withNback";
+		}
+		else {
+			withNback = false;
+			nBackStatus = "withoutNback";
+		}
+		if(calibrationText == "yes") {
+			calibration = true;
+		}
+		else {
+			calibration = false;
+
+		}
+
+		dataSaverScript.addBlock(levelText, 'big', nBackFilename, "a", "cong", nBackStatus);
+       	n = levelText;
+
+
+	}
+	//dataSaver.blocksArray = blocks;
+	dataSaverScript.condition = getCondition();
+	dataSaverScript.moveSpeed = moveSpeed;
+	dataSaverScript.currentBlockIndex = 0;
+
 	var canvas = GameObject.Find ("openning canvas");
-	var renderer = canvas.GetComponent(CanvasGroup) as CanvasGroup;
-	renderer.alpha = 0f;
-	renderer.blocksRaycasts = false;
+	canvas.SetActive(false);
+}
+
+function getSpeed() {
+	return moveSpeed;
+}
+
+
+function updateSpeedIfNeeded() {
+	if(calibration == false) {
+		return;
+	}
+	if(ringsFailuresCountForCalibration > 1) {
+		moveSpeed = moveSpeed - 20;
+		ringsFailuresCountForCalibration = 0;
+		ringsCountForCalibration = 0;
+	}
+	else if (ringsCountForCalibration >= 6) {
+		EndLevel();
+	}
 }
 
 function Awake() {
-	getOpenningParameters();
 }
 
 function Start () {
-	if (!withStress) {
-		GameObject.Find("arrows_canvas").SetActive(false);
-		return;
+	flightFailures = 0;
+	nBackFailures = 0;
+	flightSuccess = 0;
+	var ob = GameObject.Find("dataSaver");
+	dataSaverScript = ob.GetComponent(dataSaver) as dataSaver; 
+	//dataSaver = gameObject.AddComponent(dataSaver); 
+	if (dataSaverScript && dataSaverScript.getBlocksCount()) {
+		if (dataSaverScript.currentBlockIndex > dataSaverScript.getBlocksCount()-1) {
+			getOpenningParameters();
+		 } 
+	}
+	else {
+		getOpenningParameters();
 	}
 	var mash: MeshRenderer;
 	var renderers = prefab1.GetComponentsInChildren(MeshRenderer);
 	mash = renderers[0];
 	mash.sharedMaterials[0].color = perf1;
 	//mash.sharedMaterials[0].SetColor("_Color", perf1);
-	letters = ReadInPointsForNback(nBackFilename);
-	yield WaitForSeconds(2);
-	InvokeRepeating("readNextLetter", 0, 2.5);
-	InvokeRepeating("setPerformanceLevel", 0.49999, 2.5);
+	ReadInPointsForNback(dataSaverScript.getFileName());
+
+	yield WaitForSeconds(8);
+	if (invoked == false) { 
+		InvokeRepeating("readNextLetter", 0, 3);
+		invoked = true;
+	}
 	//lslBCIInputScript = gameObject.GetComponent(LSL_BCI_Input); 
 }
 
 
-function setFailure() {
+function setRingFailure() {
 	failuresInRow += 1;
+	flightFailures += 1;
 	successInRow = 0;
+	ringsFailuresCountForCalibration += 1;
+	ringsCountForCalibration += 1;
+	updateSpeedIfNeeded();
 }
 
-function setSuccess() {
+function setNbackFailure() {
+	failuresInRow = maxFailuresInRow;
+	nBackFailures += 1;
+	successInRow = 0;
+	nBackFailure = true;
+}
+
+function setNbackSuccess() {
 	successInRow += 1;
 	failuresInRow = 0;
+	nBackFailure = false;
+}
+
+function setRingSuccess() {
+	flightSuccess += 1;
+	successInRow += 1;
+	failuresInRow = 0;
+	ringFailure = false;
+	ringsCountForCalibration += 1;
+	updateSpeedIfNeeded();
 }
 
 function setPrefabRings(_prefab1, _prefab2) {
@@ -147,18 +282,53 @@ function setLSL(lslObject: LSL_BCI_Input) {
 
 function EndLevel() 
 {
-	// Changed, FJ, 20160403 - Send start marker with condition
-	lslBCIInputScript.setMarker ("RunEnd_Condition_" + condition + "_Level_" + level);
-	SceneManagement.SceneManager.LoadScene ("N_back_input");
+	var flightAmount: float = flightSuccess + flightFailures + 0.0f;
+	var flightSuccessRate: float = flightSuccess / flightAmount * 100;
+
+	var nBackSuccessRate: float = 0.0;
+	if (withNback == true) {
+		var nBackSuccessAmount: float = nBackTrialsAmount - nBackFailures + 0.0f;
+		nBackSuccessRate = nBackSuccessAmount / nBackTrialsAmount * 100;
+	}
+	dataSaverScript.updateSuccessRate(flightSuccessRate, nBackSuccessRate);
+	if (calibration == true) {
+
+		var placeHolder =  GameObject.Find ("Placeholder use speed");
+
+		speedInput.text = moveSpeed.ToString();
+		speedInput.text = "160";
+		var placeHolderTextInput = placeHolder.GetComponent(UI.Text) as UI.Text;
+		placeHolderTextInput.text = moveSpeed.ToString();
+		placeHolderTextInput.text = "160";
+
+		//SceneManagement.SceneManager.LoadScene ("N_back_input");
+	}	
+	else {
+		// Changed, FJ, 20160403 - Send start marker with condition
+		lslBCIInputScript.setMarker ("RunEnd_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize +
+		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
+		SceneManagement.SceneManager.LoadScene ("stress_evaluation");
+	}
 }
 
 function readNextLetter() {
-	trialNumber++;
-	if (trialNumber > 40) {
+	targetPresentedLastTrial = targetPresented;
+
+
+	if (trialNumber >= 12) {
 		EndLevel();
+		return;
+	}
+	if (withNback == false) {
+		trialNumber += 1;
+		return;
 	}
 	buttonPressedForLastTrial = buttonPressedForTrial;
-	targetPresentedLastTrial = targetPresented;
+	if (trialNumber != 0) {
+		setFailureIfLastTrialMissed();
+	}
+
+
 	tooSlowLastTrial = tooSlow;
 	buttonPressedForTrial = false;
 	tooSlow = false;
@@ -188,8 +358,10 @@ function readNextLetter() {
 	else if (letter == "8") {
 		eight.Play();
 	}
-	lslBCIInputScript.setMarker ("Letter_" + letter);
+	lslBCIInputScript.setMarker ("Letter_" + letter + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize +
+		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
 	targetPresented = isTarget();
+	trialNumber++;
 	currentLetter += 1;
 	lastLetterTime = Time.time;
 }
@@ -209,6 +381,9 @@ function getAudioObjectForFileName(objects: Component[], name: String) {
 }
 
 function initSounds(audioObjects) {
+	if (withNback == false) {
+		return;
+	}
 	one = getAudioObjectForFileName(audioObjects, '1');
 	two = getAudioObjectForFileName(audioObjects, '2');	
 	three = getAudioObjectForFileName(audioObjects, '3');
@@ -220,14 +395,57 @@ function initSounds(audioObjects) {
 	alarm = getAudioObjectForFileName(audioObjects, 'alarm');
 }
 
+
+function createBlocksOrderFromFile(fileName: String) {
+	// read in all text
+	var sr = new StreamReader(fileName);
+ 	var fileContents = sr.ReadToEnd();
+ 	sr.Close();
+ 	// split into lines
+ 	fileContents = fileContents.Replace("\r\n","\n"); // Resolve Mac/PC difference in carriage returns
+ 	var lines = fileContents.Split("\n"[0]);
+
+ 	var i = 0;
+ 	while (lines[i] != "") {
+
+ 		var blockName = lines[i];
+
+		
+		var blockProperties:String[]=blockName.Split("-"[0]);
+		n = blockProperties[0];
+		stroopCondition = blockProperties[2];
+		blockOrdinal = blockProperties[3];
+		if (blockOrdinal == "a") {
+			targetLetter = "1";
+		}
+		else {
+			targetLetter = "2";
+		}
+		ringSize = blockProperties[4];
+
+		var blockFile = "n-back files/" + blockName + ".txt";
+
+       	dataSaverScript.addBlock(n, ringSize, blockFile, blockOrdinal, stroopCondition, "withNback");
+		
+		i++;
+     }
+}
+
 function ReadInPointsForNback(fileName: String) 
 {
+	if (withNback == false) {
+		return;
+	}
 	// set up
 	var txtLetters = new Array();
 	var txtMarkerPosition = new Array();
+
+	var txtColors = new Array();
+	var txtSounds = new Array();
 	
 	// read in all text
 	var sr = new StreamReader(fileName);
+
  	var fileContents = sr.ReadToEnd();
  	sr.Close();
  	// split into lines
@@ -242,20 +460,28 @@ function ReadInPointsForNback(fileName: String)
  		// Parse Line
 		var valSegs:String[]=line.Split("\t"[0]);
 
-		var letter = valSegs[0];	
+		var letter = valSegs[0];
+		var color = valSegs[2];
+		var sound = valSegs[3];
 
        	// TRACING of raw (x,y,z)
 //	      	Debug.Log("xStr: " + xStr + ", yStr: " + yStr + ", zStr: " + zStr);
        	txtLetters.Push(letter);
+       	txtColors.Push(color);
+       	txtSounds.Push(sound);
 		
 		i++;
      }
 
-	var letters: String[] = txtLetters.ToBuiltin(String) as String[];
-	return letters;
+	letters = txtLetters.ToBuiltin(String) as String[];
+	colors = txtColors.ToBuiltin(String) as String[];
+	sounds = txtSounds.ToBuiltin(String) as String[];
 }
 
 function buttonPressed() {
+	if (withNback == false) {
+		return;
+	}
 	if(buttonPressedForTrial) {
 		return;
 	}
@@ -265,25 +491,35 @@ function buttonPressed() {
 	if (targetPresented) {		
 		if (rt * 1000 > expectedRT) {
 			tooSlow = true;
-			setFailure();
-			lslBCIInputScript.setMarker ("nBackHIT");
+
+			lslBCIInputScript.setMarker ("nBackHIT" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
+		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
 		}
 		else {
-			setSuccess();
-			lslBCIInputScript.setMarker ("nBackHIT");
+			setNbackSuccess();
+			lslBCIInputScript.setMarker ("nBackHIT" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
+		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
 		}
 	}
 	else {
-		setFailure();
-		lslBCIInputScript.setMarker ("nBackFA");
+		setNbackFailure();
+		lslBCIInputScript.setMarker ("nBackFA" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize +
+		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
 	}
 }
 
 function isTarget() {
-	if (currentLetter - n < 0 ) {
+	if (currentLetter - parseInt(n) < 0 ) {
 		return false;
 	}
-	else if (letters[currentLetter] == letters[currentLetter-n]) {
+	var perviousLetterIndex: int = currentLetter-parseInt(n);
+	if (n == "0") {		
+		if (letters[currentLetter] == targetLetter) {
+			return true;
+		}
+	}
+
+	else if (letters[currentLetter] == letters[perviousLetterIndex]) {
 		return true;
 	}
 	else {
@@ -292,13 +528,32 @@ function isTarget() {
 }
 
 function setPerformanceLevel() {
+	if (withStress == false ) {
+		return;
+	}
+	var renderers: Component[];
+	var mash: MeshRenderer;
+	var currentColor = colors[trialNumber-1];
+	var colorRGB = getRingsColor(currentColor);
+	renderers = prefab1.GetComponentsInChildren(MeshRenderer);
+	mash = renderers[0];
+	mash.sharedMaterials[0].color = colorRGB;
+
+	playAlarmInNeeded();
+	if (withStress == false) {
+		return;
+	}
+	lslBCIInputScript.setMarker ("RingColor_" + currentColor + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize +
+		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
+
+	/*
 	setFailureIfLastTrialMissed();
 	var renderers: Component[];
 	var mash: MeshRenderer;
 	var color: Color32; ;
 	var lastPrefLevel = currentPerfLevel;
 
-	if (failuresInRow >= 2) {
+	if (failuresInRow >= maxFailuresInRow) {
 		failuresInRow = 0;
 		if (currentPerfLevel < 5) {
 			currentPerfLevel += 1;
@@ -311,7 +566,7 @@ function setPerformanceLevel() {
 		mash.sharedMaterials[0].color = color;
 		//mash.sharedMaterials[0].SetColor("_Color", color);
 	}
-	else if (successInRow >= 2) {
+	else if (successInRow >= 2 && nBackFailure != true && ringFailure != true) {
 		if (currentPerfLevel > 1) {
 			currentPerfLevel -= 1;
 			lslBCIInputScript.setMarker ("PerfChanged_" + currentPerfLevel);
@@ -322,10 +577,8 @@ function setPerformanceLevel() {
 		mash.sharedMaterials[0].color = color;
 		successInRow=0;
 	}
-	playAlarmInNeeded();
-	if (lastPrefLevel != currentPerfLevel) {
-		lslBCIInputScript.setMarker ("PrefLevel_" + currentPerfLevel);
-	}
+	*/
+
 }
 
 function shouldShowAlarmBasedOnPerfLevel() {
@@ -351,20 +604,13 @@ function getAlarmChanceForPerfLevel(){
 }
 
 
-function getRingsColor() {
-	if (currentPerfLevel == 1) {
+function getRingsColor(color) {
+	if (color =="red") {
+		return perf5;
+	}
+	else {
 		return perf1;
 	}
-	else if (currentPerfLevel == 2) {
-		return perf2;
-	}
-	else if (currentPerfLevel == 3) {
-		return perf3;
-	}
-	else if (currentPerfLevel == 4) {
-		return perf4;
-	}
-	return perf5;
 }
 
 function getPerfLevel() {
@@ -372,20 +618,28 @@ function getPerfLevel() {
 }
 
 function playAlarmInNeeded() {
-	if (shouldShowAlarmBasedOnPerfLevel()) {
+	if (trialNumber >= 12) {
+		return;
+	}
+	if (sounds[trialNumber] == "sound") {
 		alarm.Play();
-		lslBCIInputScript.setMarker ("Alarm");
+		lslBCIInputScript.setMarker ("Alarm" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize +
+
+		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
 	}	
 }
 
 function setFailureIfLastTrialMissed() {
 	if (!buttonPressedForLastTrial) {
 		if (targetPresentedLastTrial) {
-			setFailure();
-			lslBCIInputScript.setMarker ("nBackMISS");
+			setNbackFailure();
+			lslBCIInputScript.setMarker ("nBackMISS" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
+
+		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
 		}
 		else {
-			lslBCIInputScript.setMarker ("nBackCorrectRejection");
+			lslBCIInputScript.setMarker ("nBackCorrectRejection" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
+		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
 		}
 	}
 }

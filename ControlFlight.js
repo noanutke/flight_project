@@ -28,7 +28,7 @@ var filter: Array;
 
 
 // DRIFT PARAMETERS
-var driftAmplitude = 10.0; // in degrees/s
+var driftAmplitude = 1.0; // in degrees/s
 var minDriftDelay = 3.0; // min allowable, in s
 var maxDriftDelay = 5.0; // max allowable, in s
 var driftChangeInterval = 3.0; // current interval in s
@@ -143,7 +143,7 @@ function Update()
 	transform.Translate(Vector3.forward*Time.deltaTime*speed);
 	//transform_Arrows.Translate(Vector3.forward*Time.deltaTime*speed);
 	
-	// TAKEOFF
+
 	if (transform.position.z<0.0) {
 		// Implement sigmoid takeoff pattern that ends at (x=0, y=firstRingYpos, z=0)
 		transform.position.y = initialPos.y + (firstRingPos.y-initialPos.y)/(1.0 + Mathf.Exp( (transform.position.z-initialPos.z/2) / (initialPos.z/10) ) );
@@ -152,88 +152,91 @@ function Update()
 	} else {
 		
 	
-		//Update drift
-		if ( (Time.time-lastDriftChange) > driftChangeInterval ) {
-			lastDriftChange = Time.time;
-			drift = GetNewDrift(driftAmplitude);
-			// calculate new drift time
-			driftChangeInterval = Random.Range(minDriftDelay,maxDriftDelay);						
+	//Update drift
+	if ( (Time.time-lastDriftChange) > driftChangeInterval ) {
+		lastDriftChange = Time.time;
+		drift = GetNewDrift(driftAmplitude);
+		// calculate new drift time
+		driftChangeInterval = Random.Range(minDriftDelay,maxDriftDelay);						
 
-		}
+	}
+	
+	// increment bufferPos;
+	bufferPos++;
+	bufferPos = bufferPos % BUFFER_SIZE;	
+	
+	// Get new inputs
+	var newPitch = Input.GetAxis("Vertical") * (Time.deltaTime * pitchSpeed);
+	var newYaw = Input.GetAxis("Horizontal") * (Time.deltaTime * yawSpeed);
+	// Add to buffer
+	pitchBuffer[bufferPos] = newPitch;
+	yawBuffer[bufferPos] = newYaw;	
 		
-		// increment bufferPos;
-		bufferPos++;
-		bufferPos = bufferPos % BUFFER_SIZE;	
+	var fNewPitch : float = newPitch;
 		
-		// Get new inputs
-		var newPitch = Input.GetAxis("Vertical") * (Time.deltaTime * pitchSpeed);
-		var newYaw = Input.GetAxis("Horizontal") * (Time.deltaTime * yawSpeed);
-		// Add to buffer
-		pitchBuffer[bufferPos] = newPitch;
-		yawBuffer[bufferPos] = newYaw;	
-			
-		var fNewPitch : float = newPitch;
-			
-			
-		// CHANGED, FJ, 2015-05-11 --------------------
-		// Detect stick movement: A stick event is detected if the PITCH input in 
-		// the previous sample was 0.0 and in the current sample is != 0.0 
-		if ( fLastPitch == 0.0f )
+		
+	// CHANGED, FJ, 2015-05-11 --------------------
+	// Detect stick movement: A stick event is detected if the PITCH input in 
+	// the previous sample was 0.0 and in the current sample is != 0.0 
+	if ( fLastPitch == 0.0f )
+	{
+		// Is the current pitch input other than 0?
+		if ( fNewPitch != 0.0f )
 		{
-			// Is the current pitch input other than 0?
-			if ( fNewPitch != 0.0f )
-			{
-				// Set a general stick-movement marker into the data stream via LSL
-				// This marker will be the same for every stick movement.
-				lslBCIInputScript.setMarker ("StickMvmtPitch_All");
+			// Set a general stick-movement marker into the data stream via LSL
+			// This marker will be the same for every stick movement.
+			lslBCIInputScript.setMarker ("StickMvmtPitch_All");
 
-				// Add a marker to indicate movement of the stick in pitch direction as
-				// defined by a change of the pitch value from 0 to non 0. RunFlightSim
-				// annotates the string of this marker with the size of the next ring.
-				runFlightScript.sendMarkerWithRingSize ( "StickMvmtPitch" );
-			}
+			// Add a marker to indicate movement of the stick in pitch direction as
+			// defined by a change of the pitch value from 0 to non 0. RunFlightSim
+			// annotates the string of this marker with the size of the next ring.
+			runFlightScript.sendMarkerWithRingSize ( "StickMvmtPitch" );
 		}
-		
-		// Save current PITCH input for use in next sample!
-		fLastPitch = fNewPitch;
-		
-		// Always attempt to send current pitch input status via LSL
-		lslBCIInputScript.sendStickMvmt ( fNewPitch );
+	}
 
-		// END-CHANGES FJ ----------------------------
-		
-		
-			
-		//Apply filter to get current pitch & yaw
-		pitch = 0;
-		yaw = 0;
-		var iBuffer = 0;
-		for (i=0; i<FILTER_SIZE; i++) 
-		{
-			iBuffer = (((bufferPos-i) % BUFFER_SIZE) + BUFFER_SIZE) % BUFFER_SIZE; // to prevent negative numbers in modulo output
-			pitch += filter[i]*pitchBuffer[iBuffer];
-			yaw += filter[i]*yawBuffer[iBuffer];
-		}
-		
-		// Retrieve old inputs from buffer (uncomment for simple delayed control)
-		//	pitch = pitchBuffer[(bufferPos-intFilterDelay) % BUFFER_SIZE];
-		//	yaw = yawBuffer[(bufferPos-intFilterDelay) % BUFFER_SIZE];
+	
+	// Save current PITCH input for use in next sample!
+	fLastPitch = fNewPitch;
+	
+	// Always attempt to send current pitch input status via LSL
+	lslBCIInputScript.sendStickMvmt ( fNewPitch );
 
-		// print ("Pitch:" + newPitch + " / " + pitch );
+	// END-CHANGES FJ ----------------------------
+	
+	
 
-		// Apply Pitch & Yaw
-		transform.Rotate(Vector3.up * yaw);
-		transform.Rotate(Vector3.right * pitch);
-		//Apply drift
-		transform.Rotate(Vector3.right * drift * Time.deltaTime);
+	//Apply filter to get current pitch & yaw
+	pitch = 0;
+	yaw = 0;/*
+	var iBuffer = 0;
+	for (i=0; i<FILTER_SIZE; i++) 
+	{
+		iBuffer = (((bufferPos-i) % BUFFER_SIZE) + BUFFER_SIZE) % BUFFER_SIZE; // to prevent negative numbers in modulo output
+		pitch += filter[i]*pitchBuffer[iBuffer];
+		yaw += filter[i]*yawBuffer[iBuffer];
+	}
+	*/
+	yaw =newYaw;
+	pitch = newPitch;
+	// Retrieve old inputs from buffer (uncomment for simple delayed control)
+	//	pitch = pitchBuffer[(bufferPos-intFilterDelay) % BUFFER_SIZE];
+	//	yaw = yawBuffer[(bufferPos-intFilterDelay) % BUFFER_SIZE];
 
-		//transform_Arrows.Rotate(Vector3.up * yaw);
-		//transform_Arrows.Rotate(Vector3.right * pitch);
-		//Apply drift
-		//transform_Arrows.Rotate(Vector3.right * drift * Time.deltaTime);
+	// print ("Pitch:" + newPitch + " / " + pitch );
 
-	} 
-		
+	// Apply Pitch & Yaw
+	transform.Rotate(Vector3.up * yaw);
+	transform.Rotate(Vector3.right * pitch);
+	//Apply drift
+	//transform.Rotate(Vector3.right * drift * Time.deltaTime);
+
+	//transform_Arrows.Rotate(Vector3.up * yaw);
+	//transform_Arrows.Rotate(Vector3.right * pitch);
+	//Apply drift
+	//transform_Arrows.Rotate(Vector3.right * drift * Time.deltaTime);
+
+	//} 
+	}
 	//IMPLEMENT CONTROL LOCKS
     if (lockXpos) { // allow only control in y position
     	transform.position.x = 0;
@@ -245,7 +248,7 @@ function Update()
     	transform.rotation.z = 0;
     	//transform_Arrows.rotation.z = 0;
     } else { // implement roll that's 1/10 of yaw strength
-    	transform.rotation.z = -yaw * rollSpeed/yawSpeed; //Roll
+    	//transform.rotation.z = -yaw * rollSpeed/yawSpeed; //Roll
     	//transform_Arrows.rotation.z = -yaw * rollSpeed/yawSpeed; //Roll
     }
     
