@@ -5,16 +5,15 @@ import System.Collections.Generic;
 
 var moveMarkerScript: NewBehaviourScript;
 var dataSaverScript: dataSaver;
+var parallelPortScript: parallelPort;
 
 public static var finishedBlocksInCondition: boolean;
 public static var n: String = '1';
 public static var blockOrdinal = "a";
 public static var targetLetter = "1";
 public static var ringSize = "big";
-public static var stroopCondition = "cong";
+public static var stroopCondition = "incong";
 public var isPractice = false;
-
-var trialNumber = 0;
 
 var perf1 = Color32(0,255,0,1);
 var perf2 = Color32(128,255,0,1);
@@ -40,15 +39,20 @@ var six: AudioSource;
 var seven: AudioSource;
 var eight: AudioSource;
 var alarm: AudioSource;
+var bip: AudioSource;
+var alarm2: AudioSource;
 //var markerPositions: float[];
 var letters: String[];
 var colors: String[];
 var sounds: String[];
+var bips: String[];
 
 var audioFiles = [];
-var currentLetter: int = 0;
-var buttonPressedForTrial = false;
-var buttonPressedForLastTrial = false;
+var currentLetter: int = -1;
+var nbackButtonPressedForTrial = false;
+var bipButtonPressedForTrial = false;
+var nbackButtonPressedForLastTrial = false;
+var bipButtonPressedForLastTrial = false;
 var expectedRT = 1000; //ms
 var targetPresented = false;
 var targetPresentedLastTrial = false;
@@ -63,22 +67,31 @@ var nBackFailures = 0;
 var prefab1: Transform;
 var prefab2: Transform;
 var nBackTrialsAmount = 12;
+var bipAppeared = false;
 
 public static var withStress: boolean;
 public static var withNback: boolean;
 public static var order: int;
-var calibration: boolean;
+
 public static var condition: String;
 var maxFailuresInRow = 1;
 var nBackFailure = false;
 var ringFailure = true;
-public static var moveSpeed :int;
-var ringsCountForCalibration = 0;
-var ringsFailuresCountForCalibration = 0;
+
+
+
 var speedInput: UI.Text;
 
 var nBackFilename = "";
 var invoked = false;
+
+var ringsCountForCalibration = 0;
+var ringsFailuresCountForCalibration = 0;
+var calibration: boolean;
+var targetFailuresForCalibration = 3;
+var targetRingsCountForCalibration = 10;
+public static var moveSpeed :int;
+var isUpdating = false;
 
 
 
@@ -93,158 +106,83 @@ function getCalibration() {
 }
 
 function getCondition() {
-	if (withStress == true) {
-		condition = "stress";
-		return  "stress";
-	}
-	condition = "noStress";
-	return "noStress";
+	return dataSaverScript.condition;
 }
 
-function getOpenningParameters () {
-	var useNbackObj =  GameObject.Find ("TextNback");
-	var useNbackInput = useNbackObj.GetComponent(UI.Text) as UI.Text;
-	var levelInputObj =  GameObject.Find ("TextLevel");
-	var levelInput = levelInputObj.GetComponent(UI.Text) as UI.Text;
-	var calibrationInputObj =  GameObject.Find ("TextCalibration");
-	var calibrationInput = calibrationInputObj.GetComponent(UI.Text) as UI.Text;
-	var speedInputObj =  GameObject.Find ("TextSpeed");
-	speedInput = speedInputObj.GetComponent(UI.Text) as UI.Text;
-
-	var conditionObj =  GameObject.Find ("TextBaseCondition");
-	var conditionInput = conditionObj.GetComponent(UI.Text) as UI.Text;
-
-	var orderObj =  GameObject.Find ("TextOrder");
-	var orderInput = orderObj.GetComponent(UI.Text) as UI.Text;
-
-	var speedPlaceHolderObj =  GameObject.Find ("Placeholder use speed");
-	var speedPlaceHolderInput = speedPlaceHolderObj.GetComponent(UI.Text) as UI.Text;
-	var levelText = levelInput.text;
-	var useNbackText = useNbackInput.text;
-	var calibrationText = calibrationInput.text;
-	var speedText = speedInput.text;
-	var speedPlaceHolderText = speedPlaceHolderInput.text;
-
-	var baseConditionText = conditionInput.text;
-	var orderText = orderInput.text;
-
-
-	if (baseConditionText == "yes") {
-		withStress = false;
-	}
-	else {
-		withStress = true;
-	}
-	moveSpeed = parseInt(speedText);
-
-	dataSaverScript.restartBlocks();
-	if (orderText == "1") {
-		withNback = true;
-		order = 1;
-		createBlocksOrderFromFile("n-back files/" + "order" + orderText + ".txt");
-	}
-	else if (orderText == "2") {
-		withNback = true;
-		order = 2;
-		createBlocksOrderFromFile("n-back files/" + "order" + orderText + ".txt");
-		
-	}
-	else {
-		isPractice = true;
-		dataSaverScript.showSuccessRate = true;
-		nBackFilename = "n-back files/" + levelText+ "-back-cong-a-big.txt";
-
-		var nBackStatus = "";
-		if (useNbackText == "yes") {
-			withNback = true;
-			nBackStatus = "withNback";
-		}
-		else {
-			withNback = false;
-			nBackStatus = "withoutNback";
-		}
-		if(calibrationText == "yes") {
-			calibration = true;
-		}
-		else {
-			calibration = false;
-
-		}
-
-		dataSaverScript.addBlock(levelText, 'big', nBackFilename, "a", "cong", nBackStatus);
-       	n = levelText;
-
-
-	}
-	//dataSaver.blocksArray = blocks;
-	dataSaverScript.condition = getCondition();
-	dataSaverScript.moveSpeed = moveSpeed;
-	dataSaverScript.currentBlockIndex = 0;
-
-	var canvas = GameObject.Find ("openning canvas");
-	canvas.SetActive(false);
-}
 
 function getSpeed() {
 	return moveSpeed;
-}
-
-
-function updateSpeedIfNeeded() {
-	if(calibration == false) {
-		return;
-	}
-	if(ringsFailuresCountForCalibration > 1) {
-		moveSpeed = moveSpeed - 20;
-		ringsFailuresCountForCalibration = 0;
-		ringsCountForCalibration = 0;
-	}
-	else if (ringsCountForCalibration >= 6) {
-		EndLevel();
-	}
 }
 
 function Awake() {
 }
 
 function Start () {
+
+	currentLetter = -1;
 	flightFailures = 0;
 	nBackFailures = 0;
 	flightSuccess = 0;
 	var ob = GameObject.Find("dataSaver");
-	dataSaverScript = ob.GetComponent(dataSaver) as dataSaver; 
-	//dataSaver = gameObject.AddComponent(dataSaver); 
-	if (dataSaverScript && dataSaverScript.getBlocksCount()) {
-		if (dataSaverScript.currentBlockIndex > dataSaverScript.getBlocksCount()-1) {
-			getOpenningParameters();
-		 } 
-	}
-	else {
-		getOpenningParameters();
-	}
+	dataSaverScript = ob.GetComponent(dataSaver) as dataSaver;
+
+	parallelPortScript = dataSaverScript.getParallelsScript();
+
+	targetFailuresForCalibration = dataSaverScript.ringsFailuresForCalibrationTarget;
+	targetRingsCountForCalibration = dataSaverScript.ringsAmountForCalibrationPhase;
+	calibration = dataSaverScript.getIsCalibration();
+
+
+	initilaizeCurrentBlockProperties();
 	var mash: MeshRenderer;
 	var renderers = prefab1.GetComponentsInChildren(MeshRenderer);
 	mash = renderers[0];
 	mash.sharedMaterials[0].color = perf1;
-	//mash.sharedMaterials[0].SetColor("_Color", perf1);
-	ReadInPointsForNback(dataSaverScript.getFileName());
 
-	yield WaitForSeconds(8);
+	yield WaitForSeconds(3);
 	if (invoked == false) { 
 		InvokeRepeating("readNextLetter", 0, 3);
+		InvokeRepeating("setPerformanceLevel", 0.49999, 3);
 		invoked = true;
 	}
-	//lslBCIInputScript = gameObject.GetComponent(LSL_BCI_Input); 
 }
 
 
+
+function initilaizeCurrentBlockProperties() {
+	this.letters = dataSaverScript.getLetters();
+	this.colors = dataSaverScript.getColors();
+	this.sounds = dataSaverScript.getAlarms();
+	this.bips = dataSaverScript.getBips();
+
+	if (dataSaverScript.getIsBaseline()) {
+		return;
+	}
+	withStress = dataSaverScript.condition == "stress"? true: false;
+	n = dataSaverScript.getN().ToString();
+	stroopCondition = dataSaverScript.getStroopCondition();
+	blockOrdinal = dataSaverScript.getType();
+	targetLetter = dataSaverScript.getTargetLetter();
+	withNback = dataSaverScript.getWithNBack();
+	ringSize = dataSaverScript.getRingSize();
+	moveSpeed = dataSaverScript.moveSpeed;
+
+
+}
+
 function setRingFailure() {
+	if (isUpdating) {
+		return;
+	}
 	failuresInRow += 1;
 	flightFailures += 1;
 	successInRow = 0;
-	ringsFailuresCountForCalibration += 1;
-	ringsCountForCalibration += 1;
-	updateSpeedIfNeeded();
+
+	if (dataSaverScript.getIsCalibration()) {
+		ringsFailuresCountForCalibration += 1;
+		ringsCountForCalibration += 1;
+		updateSpeedIfNeeded();
+	}
 }
 
 function setNbackFailure() {
@@ -261,12 +199,54 @@ function setNbackSuccess() {
 }
 
 function setRingSuccess() {
+	if (isUpdating) {
+		return;
+	}
 	flightSuccess += 1;
 	successInRow += 1;
 	failuresInRow = 0;
 	ringFailure = false;
-	ringsCountForCalibration += 1;
-	updateSpeedIfNeeded();
+	if (dataSaverScript.getIsCalibration()) {
+		ringsCountForCalibration += 1;
+		updateSpeedIfNeeded();
+	}
+}
+
+function updateSpeedIfNeeded() {
+	if (isUpdating) {
+		return;
+	}
+	isUpdating = true;
+	if (ringsCountForCalibration >= targetRingsCountForCalibration) {
+		
+		if (targetFailuresForCalibration > 0) {
+			if(ringsFailuresCountForCalibration >= targetFailuresForCalibration) {
+				dataSaverScript.moveSpeed =  moveSpeed;
+				EndLevel();
+			}
+			else {
+				if ( targetFailuresForCalibration != targetRingsCountForCalibration) {
+					moveSpeed += 20;
+				}
+				ringsCountForCalibration = 0;
+				ringsFailuresCountForCalibration = 0;
+
+			}
+
+
+		}
+		else if (targetFailuresForCalibration == 0) {
+			if (ringsFailuresCountForCalibration == 0) {
+				dataSaverScript.moveSpeed =  moveSpeed;
+				EndLevel();
+			}
+			else {
+				ringsCountForCalibration = 0;
+				ringsFailuresCountForCalibration = 0;
+			}
+		}
+	}
+	isUpdating = false;	
 }
 
 function setPrefabRings(_prefab1, _prefab2) {
@@ -280,6 +260,8 @@ function setLSL(lslObject: LSL_BCI_Input) {
 	lslBCIInputScript = lslObject;
 }
 
+
+
 function EndLevel() 
 {
 	var flightAmount: float = flightSuccess + flightFailures + 0.0f;
@@ -291,49 +273,62 @@ function EndLevel()
 		nBackSuccessRate = nBackSuccessAmount / nBackTrialsAmount * 100;
 	}
 	dataSaverScript.updateSuccessRate(flightSuccessRate, nBackSuccessRate);
-	if (calibration == true) {
 
-		var placeHolder =  GameObject.Find ("Placeholder use speed");
+	// Changed, FJ, 20160403 - Send start marker with condition
+	lslBCIInputScript.setMarker ("RunEnd_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize +
+	"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
 
-		speedInput.text = moveSpeed.ToString();
-		speedInput.text = "160";
-		var placeHolderTextInput = placeHolder.GetComponent(UI.Text) as UI.Text;
-		placeHolderTextInput.text = moveSpeed.ToString();
-		placeHolderTextInput.text = "160";
-
-		//SceneManagement.SceneManager.LoadScene ("N_back_input");
-	}	
-	else {
-		// Changed, FJ, 20160403 - Send start marker with condition
-		lslBCIInputScript.setMarker ("RunEnd_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize +
-		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
+	parallelPortScript.OutputToParallel(2);
+	if (dataSaverScript.getIsCalibration() == true) {
+		SceneManagement.SceneManager.LoadScene ("calibrationResults");
+	}
+	else if (dataSaverScript.getIsLastPractice()) {
+			SceneManagement.SceneManager.LoadScene ("successRates");
+	}
+	else if (dataSaverScript.currentBlockIndex == dataSaverScript.halfConditionIndex ||
+	dataSaverScript.currentBlockIndex == dataSaverScript.fullConditionIndex){
+		dataSaverScript.updateBlockIndex();
 		SceneManagement.SceneManager.LoadScene ("stress_evaluation");
 	}
+	else {
+		dataSaverScript.updateBlockIndex();
+		SceneManagement.SceneManager.LoadScene("Instructions");
+	}
+	
 }
 
 function readNextLetter() {
 	targetPresentedLastTrial = targetPresented;
+	nbackButtonPressedForLastTrial = nbackButtonPressedForTrial;
+	bipButtonPressedForLastTrial = bipButtonPressedForTrial;
+	if (currentLetter != -1) {
+		setFailureIfLastTrialMissed();
+	}
+	bipAppeared = false;
+	currentLetter += 1;
 
 
-	if (trialNumber >= 12) {
+	if (!calibration && currentLetter >= 12) {
 		EndLevel();
 		return;
 	}
-	if (withNback == false) {
-		trialNumber += 1;
+	if (dataSaverScript.getIsBaseline() || withNback == false) {
 		return;
 	}
-	buttonPressedForLastTrial = buttonPressedForTrial;
-	if (trialNumber != 0) {
-		setFailureIfLastTrialMissed();
-	}
+
 
 
 	tooSlowLastTrial = tooSlow;
-	buttonPressedForTrial = false;
+	nbackButtonPressedForTrial = false;
+	bipButtonPressedForTrial = false;
 	tooSlow = false;
 
 	var letter = letters[currentLetter];
+	lslBCIInputScript.setMarker ("Letter_" + letter + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize +
+	"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
+	targetPresented = isTarget();
+
+
 	if (letter == "1") {
 		one.Play();
 	}
@@ -358,11 +353,8 @@ function readNextLetter() {
 	else if (letter == "8") {
 		eight.Play();
 	}
-	lslBCIInputScript.setMarker ("Letter_" + letter + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize +
-		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
-	targetPresented = isTarget();
-	trialNumber++;
-	currentLetter += 1;
+
+
 	lastLetterTime = Time.time;
 }
 
@@ -392,114 +384,46 @@ function initSounds(audioObjects) {
 	six = getAudioObjectForFileName(audioObjects, '6');
 	seven = getAudioObjectForFileName(audioObjects, '7');
 	eight = getAudioObjectForFileName(audioObjects, '8');
-	alarm = getAudioObjectForFileName(audioObjects, 'alarm');
+	alarm = getAudioObjectForFileName(audioObjects, 'scream');
+	bip = getAudioObjectForFileName(audioObjects, 'beep1');
+	alarm2 = getAudioObjectForFileName(audioObjects, 'alarm');
 }
 
+function bipButtonPressed() {
+	lslBCIInputScript.setMarker("bipButtonPressed");
 
-function createBlocksOrderFromFile(fileName: String) {
-	// read in all text
-	var sr = new StreamReader(fileName);
- 	var fileContents = sr.ReadToEnd();
- 	sr.Close();
- 	// split into lines
- 	fileContents = fileContents.Replace("\r\n","\n"); // Resolve Mac/PC difference in carriage returns
- 	var lines = fileContents.Split("\n"[0]);
+	if(bipButtonPressedForTrial) {
+		return;
+	}
+	bipButtonPressedForTrial = true;
+	var currentTime = Time.time;
+	var rt = currentTime - lastLetterTime - 0.5 - 0.08;
+	if (bipAppeared == true ) {		
+			lslBCIInputScript.setMarker ("bipHIT" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
+		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
+	}
+	else {
+			lslBCIInputScript.setMarker ("bipFA" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
+	"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
+	}
 
- 	var i = 0;
- 	while (lines[i] != "") {
-
- 		var blockName = lines[i];
-
-		
-		var blockProperties:String[]=blockName.Split("-"[0]);
-		n = blockProperties[0];
-		stroopCondition = blockProperties[2];
-		blockOrdinal = blockProperties[3];
-		if (blockOrdinal == "a") {
-			targetLetter = "1";
-		}
-		else {
-			targetLetter = "2";
-		}
-		ringSize = blockProperties[4];
-
-		var blockFile = "n-back files/" + blockName + ".txt";
-
-       	dataSaverScript.addBlock(n, ringSize, blockFile, blockOrdinal, stroopCondition, "withNback");
-		
-		i++;
-     }
 }
 
-function ReadInPointsForNback(fileName: String) 
-{
+function nbackButtonPressed() {
+	lslBCIInputScript.setMarker("nbackButtonPressed");
 	if (withNback == false) {
 		return;
 	}
-	// set up
-	var txtLetters = new Array();
-	var txtMarkerPosition = new Array();
-
-	var txtColors = new Array();
-	var txtSounds = new Array();
-	
-	// read in all text
-	var sr = new StreamReader(fileName);
-
- 	var fileContents = sr.ReadToEnd();
- 	sr.Close();
- 	// split into lines
- 	fileContents = fileContents.Replace("\r\n","\n"); // Resolve Mac/PC difference in carriage returns
- 	var lines = fileContents.Split("\n"[0]);
-
- 	var i = 0;
- 	while (lines[i] != "") {
-
- 		var line = lines[i];
- 		//var valSegs2:String[]=line.Split("\t");
- 		// Parse Line
-		var valSegs:String[]=line.Split("\t"[0]);
-
-		var letter = valSegs[0];
-		var color = valSegs[2];
-		var sound = valSegs[3];
-
-       	// TRACING of raw (x,y,z)
-//	      	Debug.Log("xStr: " + xStr + ", yStr: " + yStr + ", zStr: " + zStr);
-       	txtLetters.Push(letter);
-       	txtColors.Push(color);
-       	txtSounds.Push(sound);
-		
-		i++;
-     }
-
-	letters = txtLetters.ToBuiltin(String) as String[];
-	colors = txtColors.ToBuiltin(String) as String[];
-	sounds = txtSounds.ToBuiltin(String) as String[];
-}
-
-function buttonPressed() {
-	if (withNback == false) {
+	if(nbackButtonPressedForTrial) {
 		return;
 	}
-	if(buttonPressedForTrial) {
-		return;
-	}
-	buttonPressedForTrial = true;
+	nbackButtonPressedForTrial = true;
 	var currentTime = Time.time;
 	var rt = currentTime - lastLetterTime - 0.5;
-	if (targetPresented) {		
-		if (rt * 1000 > expectedRT) {
-			tooSlow = true;
-
-			lslBCIInputScript.setMarker ("nBackHIT" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
-		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
-		}
-		else {
+	if (isTarget() ) {		
 			setNbackSuccess();
 			lslBCIInputScript.setMarker ("nBackHIT" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
 		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
-		}
 	}
 	else {
 		setNbackFailure();
@@ -528,12 +452,13 @@ function isTarget() {
 }
 
 function setPerformanceLevel() {
+	playBipIfNeeded();
 	if (withStress == false ) {
 		return;
 	}
 	var renderers: Component[];
 	var mash: MeshRenderer;
-	var currentColor = colors[trialNumber-1];
+	var currentColor = colors[currentLetter];
 	var colorRGB = getRingsColor(currentColor);
 	renderers = prefab1.GetComponentsInChildren(MeshRenderer);
 	mash = renderers[0];
@@ -545,39 +470,6 @@ function setPerformanceLevel() {
 	}
 	lslBCIInputScript.setMarker ("RingColor_" + currentColor + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize +
 		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
-
-	/*
-	setFailureIfLastTrialMissed();
-	var renderers: Component[];
-	var mash: MeshRenderer;
-	var color: Color32; ;
-	var lastPrefLevel = currentPerfLevel;
-
-	if (failuresInRow >= maxFailuresInRow) {
-		failuresInRow = 0;
-		if (currentPerfLevel < 5) {
-			currentPerfLevel += 1;
-			lslBCIInputScript.setMarker ("PerfChanged_" + currentPerfLevel);
-		}
-
-		color = getRingsColor();
-		renderers = prefab1.GetComponentsInChildren(MeshRenderer);
-		mash = renderers[0];
-		mash.sharedMaterials[0].color = color;
-		//mash.sharedMaterials[0].SetColor("_Color", color);
-	}
-	else if (successInRow >= 2 && nBackFailure != true && ringFailure != true) {
-		if (currentPerfLevel > 1) {
-			currentPerfLevel -= 1;
-			lslBCIInputScript.setMarker ("PerfChanged_" + currentPerfLevel);
-		}
-		color = getRingsColor();
-		renderers = prefab1.GetComponentsInChildren(MeshRenderer);
-		mash = renderers[0];
-		mash.sharedMaterials[0].color = color;
-		successInRow=0;
-	}
-	*/
 
 }
 
@@ -618,19 +510,43 @@ function getPerfLevel() {
 }
 
 function playAlarmInNeeded() {
-	if (trialNumber >= 12) {
+	if (currentLetter >= 12) {
 		return;
 	}
-	if (sounds[trialNumber] == "sound") {
-		alarm.Play();
+	var rand = Random.Range(1, 3);
+	if (sounds[currentLetter] == "sound") {
+		parallelPortScript.OutputToParallel(3);
+		if (rand == 1) {
+			alarm.Play();
+		}
+		else {
+			alarm2.Play();
+		}
 		lslBCIInputScript.setMarker ("Alarm" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize +
 
 		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
 	}	
 }
 
+function playBipIfNeeded() {
+	if (withNback == false) {
+		return;
+	}
+	if (currentLetter >= 12) {
+		return;
+	}
+	if (bips[currentLetter] == "bip") {
+		bip.Play();
+		lslBCIInputScript.setMarker ("Bip" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize +
+
+		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
+		bipAppeared = true;	
+	}
+
+}
+
 function setFailureIfLastTrialMissed() {
-	if (!buttonPressedForLastTrial) {
+	if (!nbackButtonPressedForLastTrial) {
 		if (targetPresentedLastTrial) {
 			setNbackFailure();
 			lslBCIInputScript.setMarker ("nBackMISS" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
@@ -639,6 +555,18 @@ function setFailureIfLastTrialMissed() {
 		}
 		else {
 			lslBCIInputScript.setMarker ("nBackCorrectRejection" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
+		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
+		}
+	}
+
+	if (!bipButtonPressedForTrial) {
+		if (bipAppeared == true) {
+			lslBCIInputScript.setMarker ("bipMISS" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
+
+		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
+		}
+		else {
+			lslBCIInputScript.setMarker ("bipCorrectRejection" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
 		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
 		}
 	}

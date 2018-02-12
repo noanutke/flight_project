@@ -14,16 +14,20 @@ public class stressEvaluation : MonoBehaviour {
 	public GameObject sliderStressObj;
 	public GameObject button;
 	public Button buttonComponent;
-	private bool stressMarkerMoved;
-	private bool unpleasentMarkerMoved;
+
 	private Slider sliderUnpleasentComponent;
 	private Slider sliderStressComponent;
-	public static List<int> stressValues  = new List<int>();
-	public static List<int> unpleasentValues  = new List<int>();
+	public static List<string> stressValues  = new List<string>();
+	public static List<string> unpleasentValues  = new List<string>();
 	public static List<float> stressValuesTimes  = new List<float>();
 	public static List<float> unpleasentValuesTimes  = new List<float>();
 	public static List<string> levels = new List<string>();
 	public static List<string> stressStatus = new List<string>();
+	public static List<string> ringSizes = new List<string>();
+	public static List<string> stroopConditions = new List<string>();
+	public static List<string> isPracticeList = new List<string>();
+	public static List<string> isBaselineList = new List<string>();
+	public static List<string> speeds = new List<string>();
 	private int stressValue = 50;
 	private int unpleasentValue = 50;
 	private float stressValueTime = 0.0f;
@@ -34,44 +38,34 @@ public class stressEvaluation : MonoBehaviour {
 	private int itemsNumber;
 	private Slider[] items;
 	private float startTime = 0;
-	private float timeLimit = 8;
+	private float timeLimit = 1;
 	private int updatesNumber = 0;
 	private static string createdFileName = "";
 	private static int nextDataIndexToSave = 0;
-
-
+	private LSL_BCI_Input lslScript;
+	private dataSaver dataSaverScript;
 
 
 
 	// Use this for initialization
-	void Start () {	
+	void Start () {
+		
 		GameObject emptyObject =  GameObject.Find("dataSaver");
 		if (emptyObject) {
-			dataSaver dataSaver = emptyObject.GetComponent<dataSaver> ();
+			dataSaverScript = emptyObject.GetComponent<dataSaver> ();
 
-			if (dataSaver) {
-				if (dataSaver.shouldSaveData) {
-					enabled = false;
-					this.writeValuesToFile ();
-					SceneManager.LoadScene ("load_evaluation");
-					return;
-				}
+			if (dataSaverScript) {
+				this.lslScript = dataSaverScript.getLslScript ();
 			}
 		}
 
-
+		if (dataSaverScript.getIsLastPractice()) {
+			timeLimit = int.MaxValue;
+		}
 		itemsNumber = 2;
 
 		currentItemIndex = 0;
-		/*
-		GameObject canvas =  GameObject.Find ("Canvas_stress");
-		CanvasGroup renderer = canvas.GetComponent<CanvasGroup>();
-		renderer.alpha = 1f;
-		renderer.blocksRaycasts = true;
-		renderer.interactable = true;
-		*/
-		stressMarkerMoved = false;
-		unpleasentMarkerMoved = false;
+
 		sliderUnpleasentObj = GameObject.Find ("Slider_unPleasent");
 		sliderStressObj = GameObject.Find ("Slider_stress");
 		sliderUnpleasentComponent = sliderUnpleasentObj.GetComponent<Slider> ();
@@ -101,12 +95,18 @@ public class stressEvaluation : MonoBehaviour {
 				}
 			}
 		}
-
+		this.lslScript.setMarker ("startStressEvaluation");
 		this.startTime = Time.time;
 	}
 
 	// Update is called once per frame
 	void Update () {
+		if (dataSaverScript.getIsLastPractice()) {
+			if(Input.GetKeyDown(KeyCode.Space)){
+				SceneManager.LoadScene ("load_evaluation");
+				return;
+			}
+		}
 		float currrentTime = Time.time;
 		if (currrentTime - this.startTime > this.timeLimit) {
 			this.onDone ();
@@ -114,18 +114,7 @@ public class stressEvaluation : MonoBehaviour {
 		if (stressMarkerMoved && unpleasentMarkerMoved) {
 			button.SetActive (true);
 		}*/
-		if(Input.anyKey){
-			if (updatesNumber > 0) {
-				if (updatesNumber == 15) {
-					updatesNumber = 0;
-					return;
-				}
-				updatesNumber++;
-				return;
-			}
-			updatesNumber++;
-
-
+		if(Input.anyKeyDown){
 			UnityEngine.UI.Image[] images = items [currentItemIndex].GetComponentsInChildren<UnityEngine.UI.Image> ();
 			int i = 0;
 			for (i = 0; i < images.Length; i++) {
@@ -148,28 +137,42 @@ public class stressEvaluation : MonoBehaviour {
 		}
 		var movement = Input.GetAxis ("Horizontal");
 		if (currentItemIndex < itemsNumber) {
-			items[currentItemIndex].value += movement;
+			items[currentItemIndex].value += movement/2;
 		}
 
 	}
 
 	void onDone() {
-		GameObject emptyObject =  GameObject.Find("dataSaver");
-		dataSaver dataSaver = emptyObject.GetComponent<dataSaver> ();
 		string levelText = "";
 		string stressText = "";
+		string ringSizeText = "";
+		string stroopCondition = "";
+		string isPractice = "";
+		string speed = "";
+		string isBaseline = ""; 
 
-		if (dataSaver) {
-			stressText = dataSaver.condition;
-			levelText = dataSaver.getLastN ().ToString ();
-		}
-		stressValues.Add(stressValue);
-		unpleasentValues.Add(unpleasentValue);
+		stressText = dataSaverScript.condition;
+		levelText = dataSaverScript.getLastN ().ToString ();
+		ringSizeText = dataSaverScript.getLastRingSize();
+		stroopCondition = dataSaverScript.getStroopCondition ().ToString ();
+		isPractice = dataSaverScript.getIsLastPractice().ToString ();
+		speed = dataSaverScript.moveSpeed.ToString ();
+		isBaseline = dataSaverScript.getLastIsBaseline().ToString ();
+
+		stressValues.Add(stressValueTime > 0 ? stressValue.ToString() : "");
+		unpleasentValues.Add(unpleasentValueTime > 0? unpleasentValue.ToString() : ""	);
 		stressValuesTimes.Add(stressValueTime);
 		unpleasentValuesTimes.Add(unpleasentValueTime);
 		levels.Add (levelText);
 		stressStatus.Add (stressText);
+		ringSizes.Add (ringSizeText);
+		stroopConditions.Add (stroopCondition);
+		isPracticeList.Add (isPractice);
+		isBaselineList.Add (isBaseline);
+		speeds.Add (speed);
+
 		this.writeValuesToFile ();
+		this.lslScript.setMarker ("endStressEvaluation");
 		SceneManager.LoadScene ("load_evaluation");
 	}
 
@@ -177,10 +180,10 @@ public class stressEvaluation : MonoBehaviour {
 		StreamWriter stream = null;
 		StringBuilder stringRow;
 		string path = Application.dataPath;
-		string[] values = new string[6];
+		string[] values = new string[12];
 		if (createdFileName == "") {
 			float time = Time.time;
-			path = path + "/" + "stress_data_" + time.ToString ();
+			path = path + "/" + "stress_data_sub_" + this.dataSaverScript.subjectNumber + "_time_" + time.ToString ();
 			stream = File.CreateText (path);
 			createdFileName = path;
 
@@ -191,6 +194,12 @@ public class stressEvaluation : MonoBehaviour {
 			values [3] = "unpleasent_rt";
 			values [4] = "level";
 			values [5] = "stressStatus";
+			values [6] = "ringSize";
+			values [7] = "stroopCondition";
+			values [8] = "isPractice";
+			values [9] = "speed";
+			values [10] = "difficultLevel";
+			values [11] = "isBaseline";
 			//stressFile.WriteLine (values);
 			stringRow = getStringFromArray (values);
 			stream.WriteLine (stringRow);
@@ -198,18 +207,7 @@ public class stressEvaluation : MonoBehaviour {
 			stream = new StreamWriter (createdFileName, true);
 		}
 
-		/*
-		for (int i = 0; i < stressValues.Count; i++) {
-			values [0] = stressValues[i].ToString ();
-			values [1] = unpleasentValues[i].ToString ();
-			values [2] = ((int)stressValuesTimes[i]).ToString ();
-			values [3] = ((int)unpleasentValuesTimes[i]).ToString ();
-			values [4] = levels[i].ToString ();
-			values [5] = stressStatus[i].ToString ();
-			//stressFile.WriteLine (values);
-			stringRow = getStringFromArray (values);
-			stream.WriteLine (stringRow);
-		}*/
+
 
 		values [0] = stressValues[nextDataIndexToSave].ToString ();
 		values [1] = unpleasentValues[nextDataIndexToSave].ToString ();
@@ -217,6 +215,15 @@ public class stressEvaluation : MonoBehaviour {
 		values [3] = ((int)unpleasentValuesTimes[nextDataIndexToSave]).ToString ();
 		values [4] = levels[nextDataIndexToSave].ToString ();
 		values [5] = stressStatus[nextDataIndexToSave].ToString ();
+
+		values [6] = ringSizes[nextDataIndexToSave].ToString ();
+		values [7] = stroopConditions[nextDataIndexToSave].ToString ();
+		values [8] = isPracticeList[nextDataIndexToSave].ToString ();
+		values [9] = speeds[nextDataIndexToSave].ToString ();
+		values [10] = this.dataSaverScript.getDifficultLevel (levels [nextDataIndexToSave].ToString (),
+		ringSizes [nextDataIndexToSave].ToString ());
+		values [11] = isBaselineList [nextDataIndexToSave].ToString ();
+
 		stringRow = getStringFromArray (values);
 		stream.WriteLine (stringRow);
 		nextDataIndexToSave++;
@@ -236,13 +243,11 @@ public class stressEvaluation : MonoBehaviour {
 
 	void stressValueChanged() {
 		stressValue = (int)sliderStressComponent.value;
-		stressMarkerMoved = true;
 		stressValueTime = Time.time - startTime;
 	}
 
 	void unpleasentValueChanged() {
 		unpleasentValue = (int)sliderUnpleasentComponent.value;
-		unpleasentMarkerMoved = true;
 		unpleasentValueTime = Time.time - startTime;
 	}
 

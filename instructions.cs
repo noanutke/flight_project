@@ -5,6 +5,7 @@ using UnityEngine.UI;
 public class instructions : MonoBehaviour {
 	public Sprite one;
 	public Sprite two;
+	public Sprite three;
 	public Sprite zero_a;
 	public Sprite zero_b;
 	public Sprite no_n;
@@ -13,15 +14,19 @@ public class instructions : MonoBehaviour {
 	private float timeLimitInstructions = 1;
 	private float startTimeFixation = -1;
 	private float timeLimitFixation = 1;
+	private LSL_BCI_Input lslScript;
 
 	void Update () {
 		float currrentTime = Time.time;
 		if (startTimeFixation > -1 && currrentTime - this.startTimeFixation > this.timeLimitFixation) {
+			this.lslScript.setMarker ("endFixation");
 			SceneManager.LoadScene ("FlightSimTest");
 			return;
 		}
 		if (startTimeInstructions > -1 && currrentTime - this.startTimeInstructions > this.timeLimitInstructions) {
 			startTimeFixation = Time.time;
+			this.lslScript.setMarker ("endInstructions");
+			this.lslScript.setMarker ("startFixation");
 			this.showFixation ();
 		}
 	}
@@ -38,6 +43,7 @@ public class instructions : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
+		
 		GameObject loadCanvas =  GameObject.Find ("Canvas_load");
 		if (loadCanvas) {
 			//renderer = stressCanvas.GetComponent<CanvasGroup> ();
@@ -50,60 +56,35 @@ public class instructions : MonoBehaviour {
 		startTimeInstructions = Time.time;
 
 
-
-
 		GameObject dataSaverObject =  GameObject.Find("dataSaver");
 		if (dataSaverObject) {
 			dataSaver dataSaver = dataSaverObject.GetComponent<dataSaver> ();
+			this.lslScript = dataSaver.getLslScript();
+
+			this.lslScript.setMarker ("startInstructions");
 			int currentBlockIndex = dataSaver.currentBlockIndex;
-			int length = dataSaver.getBlockLength ();
-			if (currentBlockIndex < length) {
-				if (dataSaver.getNbackStatus () != "withNback") {
-					image.sprite = this.no_n;
+
+			if (dataSaver.getWithNBack() == false) {
+				image.sprite = this.no_n;
+			} else {
+				int n = dataSaver.getN();
+				if (n == 1) {
+					image.sprite = this.one;
+				} else if (n == 2) {
+					image.sprite = this.two;
+				} else if (n == 3) {
+					image.sprite = this.three;
 				} else {
-					int n = dataSaver.getN ();
-					if (n == 1) {
-						image.sprite = this.one;
-					} else if (n == 2) {
-						image.sprite = this.two;
+					string type = dataSaver.getType ();
+					if (type == "a") {
+						image.sprite = this.zero_a;
 					} else {
-						string type = dataSaver.getType ();
-						if (type == "a") {
-							image.sprite = this.zero_a;
-						} else {
-							image.sprite = this.zero_b;
-						}
+						image.sprite = this.zero_b;
 					}
 				}
-				return;
 			}
-		}
-		GameObject useNbackObj =  GameObject.Find ("TextNback");
-		Text useNbackInput = useNbackObj.GetComponent<Text> ();
-		string useNbackText = useNbackInput.text;
-		GameObject levelInputObj =  GameObject.Find ("TextLevel");
-		Text levelInput = levelInputObj.GetComponent<Text> ();
-		string levelText = levelInput.text;
-		GameObject orderObj =  GameObject.Find ("TextOrder");
-		Text orderInput = orderObj.GetComponent<Text>();
-		string orderText = orderInput.text;
-		if (useNbackText == "no") {
-			Texture2D tex = Resources.Load ("no") as Texture2D;
-			image.sprite = this.no_n;
-		} else if (levelText == "0") {
-			image.sprite = this.zero_a;
+			return;
 
-		} else if (levelText == "1") {
-			image.sprite = this.one;
-
-		} else if (levelText == "2") {
-			image.sprite = this.two;
-
-		} else if (orderText == "1") {
-			image.sprite = this.zero_a;
-			
-		} else {
-			image.sprite = this.zero_b;
 		}
 	
 	}

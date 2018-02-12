@@ -44,33 +44,8 @@ var upArrowDirecionScript: changeUpDirectionArrow;
 var downArrowDirecionScript: changeDownDirectionArrow;
 var leftArrowDirecionScript: changeLeftDirectionArrow;
 var rightArrowDirecionScript: changeRightDirectionArrow;
-var trialsNumber = 70;
+var crossScript: crossControl;
 
-var arrowsArrayLong = [["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
-["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
-["up_pointingUp", "right_pointingLeft"],["down_pointingUp", "right_pointingRight"],
-["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"],["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
-["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
-["up_pointingUp", "right_pointingLeft"],["down_pointingUp", "right_pointingRight"],
-["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"],["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
-["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
-["up_pointingUp", "right_pointingLeft"],["down_pointingUp", "right_pointingRight"],
-["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"],["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
-["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
-["up_pointingUp", "right_pointingLeft"],["down_pointingUp", "right_pointingRight"],
-["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"],
-["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"],["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
-["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
-["up_pointingUp", "right_pointingLeft"],["down_pointingUp", "right_pointingRight"],
-["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"],["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
-["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
-["up_pointingUp", "right_pointingLeft"],["down_pointingUp", "right_pointingRight"],
-["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"],
-["up_pointingUp", "right_pointingLeft"],["down_pointingUp", "right_pointingRight"],
-["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"],["up_pointingUp", "left_pointingRight"], ["up_pointingUp", "right_pointingRight"],
-["up_pointingDown", "right_pointingRight"], ["up_pointingDown", "right_pointingRight"],["up_pointingUp", "right_pointingRight"],
-["up_pointingUp", "right_pointingLeft"],["down_pointingUp", "right_pointingRight"],
-["down_pointingUp","right_pointingRight"], ["down_pointingUp","left_pointingLeft"]];
 
 var currentRing = "UpRight";
 var width = 0;
@@ -167,6 +142,7 @@ var failuresInRow = 0;
 
 
 private var eyelinkScript; //the script that passes messages to and receives eye positions from the eyetracker
+private var parallelPortScript;
 private var flightScript; // the script that allows the subject to control the flight
 private var portIsSync = false; //is parallel port sending Constants.SYNC?
 private var syncTime = 0.0; //  the next time when the sync pulse should be sent
@@ -190,8 +166,9 @@ private var stroopCondition;
 private var ringSize;
 private var condition;
 private var calibration;
+private var ringsAmountForCalibrationPhase;
 
-private var arrowsAmount = 9;
+private var arrowsAmount = 420;
 private var firstRingPassed = false;
 private var arrowsArray = new Array();
 
@@ -215,7 +192,7 @@ function createArrowsArray(stroopCondition: String) {
 		}
 		else {
 			uniqueIndices.Push(index);
-		}
+			}
 	}
 
 
@@ -231,6 +208,46 @@ function createArrowsArray(stroopCondition: String) {
 
 	return arrowsArray;
 }
+
+function getRingFromArrows(arrows)
+{	
+	var currentRing;
+	if (arrows[0] == "up_pointingUp")	// show up direction arrow in up position
+	{
+		currentRing = "Up";
+	}
+	if (arrows[0] == "up_pointingDown")	// show up direction arrow in down position
+	{
+		currentRing = "Down";
+	}
+	if (arrows[0] == "down_pointingUp")	// show down direction arrow in up position
+	{
+		currentRing = "Up";
+	}
+	if (arrows[0] == "down_pointingDown")	// show down direction arrow in down position
+	{
+		currentRing = "Down";
+	}
+	if (arrows[1] == "left_pointingRight")	// show up direction arrow in up position
+	{
+		currentRing += "Right";
+	}
+	if (arrows[1] == "right_pointingRight")	// show up direction arrow in up position
+	{
+		currentRing += "Right";
+	}
+	if (arrows[1] == "right_pointingLeft")	// show up direction arrow in up position
+	{
+		currentRing += "Left";
+	}
+	if (arrows[1] == "left_pointingLeft")	// show up direction arrow in up position
+	{
+		currentRing += "Left";
+	}
+
+	return currentRing;
+}
+
 
 function innerCreationOfArrowsArray(verticalMajorityOptions, horizontalMajorityOptions, verticalMinorityOptions,
 		horizontalMinorityOptions, uniqueIndices) {
@@ -294,6 +311,10 @@ function Start()
 	firstRingPassed = false;
 	var ob = GameObject.Find("dataSaver");
 	dataSaverScript = ob.GetComponent(dataSaver) as dataSaver; 
+
+	parallelPortScript = dataSaverScript.getParallelsScript();
+
+
 	var audioObjects: Component[];
 	audioObjects = GetComponents(AudioSource);
 
@@ -305,7 +326,9 @@ function Start()
 	blockOrdinal = dataSaverScript.getType();
 	stroopCondition = dataSaverScript.getStroopCondition();
 	condition = dataSaverScript.condition;
-	calibration = false;
+	calibration = dataSaverScript.isCalibration;
+	ringsAmountForCalibrationPhase = dataSaverScript.ringsAmountForCalibrationPhase;
+
 
 	moveSpeed = dataSaverScript.moveSpeed;
 
@@ -317,13 +340,20 @@ function Start()
 	eyelinkScript = gameObject.AddComponent(eyelink); // to interface with eye tracker
 	gameObject.AddComponent(Constants); // to get constants
 	flightScript = gameObject.AddComponent(ControlFlight); // to enable flight controls
+
+
 	// Get eyelink script for logging	
 //	eyelinkScript = gameObject.GetComponent(eyelink); //gets eye position and records messages
 
 
 	// CHANGED, FJ, 2015-05-11
-	lslBCIInputScript = gameObject.AddComponent(LSL_BCI_Input); // To interface with online BCI
+	//lslBCIInputScript = gameObject.AddComponent(LSL_BCI_Input); // To interface with online BCI
+
+	lslBCIInputScript = dataSaverScript.getLslScript();
+
 	controlNbackScript.setLSL (lslBCIInputScript);
+
+
 
 	// Configure the LSL module according to the values received from LevelLoader
 
@@ -347,17 +377,24 @@ function Start()
 		temp_filename = "NEDElast.edf"; //temporary filename on EyeLink computer - must be <=8 characters (not counting .edf)!	
 	} else {
 		temp_filename = ""; //means "do not record an edf file"
-		EDF_filename = ""; //means "do not transfer an edf file to this computer"
+		EDF_filename = ""; //means "do not transfer an StartTracker file to this computer"
 	}
 	
 	//Start eye tracker
 	//print("--- subject: " + subject + "  session: " + session + " ---"); //print commands act as backup to eyelink logging/commands 
-	var startOut = eyelinkScript.StartTracker(temp_filename); 
+	var startOut = eyelinkScript.StartTracker(dataSaverScript.subjectNumber);
 	eyelinkScript.SendToEEG(Constants.START_RECORDING);
+
+	eyelinkScript.write("getTime");
+	var t = eyelinkScript.getTime();
+	lslBCIInputScript.setMarker ("eyeLinkTime_" + t);
+
+
+
 	//yield WaitForSeconds(0.2);
 	
 	//Log experiment parameters
-	eyelinkScript.write("----- SESSION PARAMETERS -----");
+
 	eyelinkScript.write("subject: " + subject);
 	eyelinkScript.write("session: " + session);
 	eyelinkScript.write("Date: " + System.DateTime.Now);
@@ -492,16 +529,22 @@ function Start()
 	flightScript.filterDownTime = filterDownTime;
 
 	// Try to pause to allow to start recording!
-	yield WaitForSeconds(2);
+	yield WaitForSeconds(3);
 
+	currentBlockNumber = dataSaverScript.currentBlockIndex;
 	// Changed, FJ, 20160403 - Send start marker with condition
 	lslBCIInputScript.setMarker ("RunStart_Condition_" + condition + "_nLevel_" + nLevel + "_ringSize_" + ringSize + 
-		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition + "_isPractice_" + isPractice);
+		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition + "_isPractice_" + isPractice + "_blockNumber_"
+		+ currentBlockNumber + "_speed_" + moveSpeed + "_subjectNumber_" + dataSaverScript.subjectNumber + 
+		"_isBaseline_"  + dataSaverScript.getIsBaseline());
 	// --------------------------------------------------------
-
+	parallelPortScript.OutputToParallel(1);
 	flightScript.setSpeed(moveSpeed);
-	dataSaverScript.currentBlockIndex += 1;
 	flightScript.StartFlight(controlNbackScript);
+	SwitchArrowIfNeeded(iNextRing);
+	changeCrossPositionIfNeeded(nextUpperLeftRingBounds.center, nextLowerLeftRingBounds.center,
+ 		nextUpperRightRingBounds.center, nextLowerRightRingBounds.center);
+	
 	//controlNbackScript.startNback();
 
 
@@ -526,38 +569,29 @@ function Update() {
 		Application.LoadLevel("Loader"); //Go back to the Loader Scene
 		return; //stop executing Update (to avoid, e.g., destroying things twice)
 	}
-
-	if (iNextRing > trialsNumber) {
-		EndLevel();
-	}
 	
 	//SYNC EYELINK AND EEG
 	if (t>syncTime) {
 		//toggle parallel port output
 		portIsSync = !portIsSync; 
 		if (portIsSync) {
-			eyelinkScript.SendToEEG(Constants.SYNC);
-		} else {
-			eyelinkScript.SendToEEG(0);
+			eyelinkScript.write("sync");
 		}
 		//get next sync time
 		syncTime = t + syncDelay;
 	}
 
-
-	// --- Extract HMD orientation ----------------------------
-	// Credit to original author: Neil Weiss
-
-	var VRcamObject = GameObject.Find ( "Camera" );
-	VRcam = VRcamObject.GetComponent.<Camera> ( );
-	var VRRotation: Vector3;
-	VRRotation = VRcam.transform.rotation.eulerAngles;
-
 	// var carRotation = cam.transform.rotation.eulerAngles;
 	// --------------------------------------------------------
 
 	// Changed, FJ, 2016/08/04, Send plane position, HMD orientation via LSL
-	lslBCIInputScript.sendFlightParams ( transform.position.z, transform.position.y, nextUpperRightRingBounds.center.z, nextUpperRightRingBounds.min.y, nextUpperRightRingBounds.max.y, VRRotation[0], VRRotation[1], VRRotation[2] );
+
+	lslBCIInputScript.sendFlightParams ( transform.position.x, transform.position.y, transform.position.z, 
+	nextUpperRightRingBounds.center.x, nextUpperRightRingBounds.center.y, 
+	nextUpperLeftRingBounds.center.x,  nextUpperLeftRingBounds.center.y,
+	nextLowerRightRingBounds.center.x, nextLowerRightRingBounds.center.y, 
+	nextLowerLeftRingBounds.center.x, nextLowerLeftRingBounds.center.y);
+
 
 	// Check if subject has passed the next ring
 	if (transform.position.z > nextUpperRightRingBounds.center.z) 
@@ -576,23 +610,30 @@ function Update() {
 			ringBounds = nextLowerLeftRingBounds;
 		}
 
+		checkIfRingFailedAndSendTrigggers(ringBounds);
+		iNextRing++;
+
+		if(dataSaverScript.getIsCalibration() && (iNextRing % ringsAmountForCalibrationPhase) == 0) {
+			moveSpeed = controlNbackScript.getSpeed();
+			flightScript.speed = moveSpeed;
+		}
+
+		if (iNextRing >= arrowsArray.length) {
+			iNextRing = 0;
+		}
 
 		SwitchArrowIfNeeded(iNextRing);
-		if (firstRingPassed == true) {			
-			checkIfRingFailedAndSendTrigggers(ringBounds);
-		}
-		else {
-			lslBCIInputScript.setMarker("FirstRingPassed_Condition_" + condition + "_nLevel_" + nLevel + "_ringSize_" + ringSize + 
-			"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);	
-		}
 
-		iNextRing++; // increment the ring number
+		 // increment the ring number
 		ChangeVisibility(UpperRightRingArray[iNextRing],true);
 		ChangeVisibility(LowerRightRingArray[iNextRing],true);
 		nextUpperRightRingBounds = ObjectInfo.ObjectBounds(UpperRightRingArray[iNextRing].gameObject); // get new ring bounds
 		nextLowerRightRingBounds = ObjectInfo.ObjectBounds(LowerRightRingArray[iNextRing].gameObject); // get new ring bounds
 		nextUpperLeftRingBounds = ObjectInfo.ObjectBounds(UpperLeftRingArray[iNextRing].gameObject); // get new ring bounds
 		nextLowerLeftRingBounds = ObjectInfo.ObjectBounds(LowerLeftRingArray[iNextRing].gameObject);
+
+		changeCrossPositionIfNeeded(nextUpperLeftRingBounds.center, nextLowerLeftRingBounds.center,
+		 nextUpperRightRingBounds.center, nextLowerRightRingBounds.center);
 
 		firstRingPassed = true;
 	}
@@ -602,6 +643,7 @@ function checkIfRingFailedAndSendTrigggers(ringBounds) {
 	if (transform.position.y < ringBounds.min.y || transform.position.y > ringBounds.max.y  ||
 		transform.position.x < ringBounds.min.x || transform.position.x > ringBounds.max.x)
 	{
+		eyelinkScript.write("RingFailed");
 		//lslBCIInputScript.setMarker (currentRing + "Fail_Size_" + Mathf.Abs(ringBounds.max.y - ringBounds.min.y));
 		var ringSize = Mathf.Abs(ringBounds.max.y - ringBounds.min.y);
 		lslBCIInputScript.setMarker("RingFailed_Condition_" + condition + "_nLevel_" + nLevel + "_ringSize_" + ringSize + 
@@ -609,20 +651,13 @@ function checkIfRingFailedAndSendTrigggers(ringBounds) {
 		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition + "_isPractice_" + isPractice);	
 
 		controlNbackScript.setRingFailure();
-		if(calibration == true) {
-			moveSpeed = controlNbackScript.getSpeed();
-			flightScript.speed = moveSpeed;
-		}
 
 		return true;
 	}
 	else {
+		eyelinkScript.write("RingPassed");
 		sendTriggerRingPassed(ringBounds);
 		controlNbackScript.setRingSuccess();
-		if(calibration == true) {
-			moveSpeed = controlNbackScript.getSpeed();
-			flightScript.speed = moveSpeed;
-		}
 		return false;
 	}
 }
@@ -649,9 +684,63 @@ function sendMarkerWithRingSize ( sMarkerName : String )
 	// CHANGED, FJ, 2015-05-11
 	// Annotate the size of the next ring to the marker string passed as argument
 	// and inject the resulting marker into the data stream via the labstreaminglayer framework.
-	lslBCIInputScript.setMarker ( sMarkerName + "_Size_" + Mathf.Abs(nextUpperRightRingBounds.max.y - nextUpperRightRingBounds.min.y));
+	//lslBCIInputScript.setMarker ( sMarkerName + "_Size_" + Mathf.Abs(nextUpperRightRingBounds.max.y - nextUpperRightRingBounds.min.y));
 }
 
+function setMarkerForControlFlight ( sMarkerName : String )
+{
+	lslBCIInputScript.setMarker(sMarkerName);
+	// Debug.Log ("# DBG: In SendMarkerWithRingSize!!");
+
+	// CHANGED, FJ, 2015-05-11
+	// Annotate the size of the next ring to the marker string passed as argument
+	// and inject the resulting marker into the data stream via the labstreaminglayer framework.
+	//lslBCIInputScript.setMarker ( sMarkerName + "_Size_" + Mathf.Abs(nextUpperRightRingBounds.max.y - nextUpperRightRingBounds.min.y));
+}
+
+function setMarkerForPitch ( fNewPitch : double )
+{
+	lslBCIInputScript.sendStickMvmtPitch ( fNewPitch );
+	// Debug.Log ("# DBG: In SendMarkerWithRingSize!!");
+
+	// CHANGED, FJ, 2015-05-11
+	// Annotate the size of the next ring to the marker string passed as argument
+	// and inject the resulting marker into the data stream via the labstreaminglayer framework.
+	//lslBCIInputScript.setMarker ( sMarkerName + "_Size_" + Mathf.Abs(nextUpperRightRingBounds.max.y - nextUpperRightRingBounds.min.y));
+}
+
+function setMarkerForYaw ( fNewPitch : double )
+{
+	lslBCIInputScript.sendStickMvmtYaw ( fNewPitch );
+	// Debug.Log ("# DBG: In SendMarkerWithRingSize!!");
+
+	// CHANGED, FJ, 2015-05-11
+	// Annotate the size of the next ring to the marker string passed as argument
+	// and inject the resulting marker into the data stream via the labstreaminglayer framework.
+	//lslBCIInputScript.setMarker ( sMarkerName + "_Size_" + Mathf.Abs(nextUpperRightRingBounds.max.y - nextUpperRightRingBounds.min.y));
+}
+
+function changeCrossPositionIfNeeded(leftUpper, leftLower, rightUpper, rightLower) {
+	if (!dataSaverScript.getIsBaseline()) {
+		crossScript.Hide();
+		return;
+	}
+	crossScript.Show();
+	if (currentRing == "UpLeft") {
+		crossScript.ChangePosition(leftUpper);
+	}
+	if (currentRing == "UpRight") {
+		crossScript.ChangePosition(rightUpper);
+	}
+	if (currentRing == "DownLeft") {
+		crossScript.ChangePosition(leftLower);
+
+	}
+	if (currentRing == "DownRight") {
+		crossScript.ChangePosition(rightLower);
+	}
+
+}
 
 function SwitchArrowIfNeeded(ringIndex)
 {	
@@ -662,66 +751,90 @@ function SwitchArrowIfNeeded(ringIndex)
 	if (currentArrow[0] == "up_pointingUp")	// show up direction arrow in up position
 	{
 		currentRing = "Up";
-		position = Vector3(0.0,9.0,0.0);
-		upArrowDirecionScript.ChangePosition(position);
-		upArrowDirecionScript.Show();
-		downArrowDirecionScript.Hide();
+		if (!dataSaverScript.getIsBaseline()) {
+			position = Vector3(0.0,10.0,0.0);
+			upArrowDirecionScript.ChangePosition(position);
+			upArrowDirecionScript.Show();
+			downArrowDirecionScript.Hide();
+			lslBCIInputScript.setMarker("up_pointingUp_Arrow");
+		}
 	}
 	if (currentArrow[0] == "up_pointingDown")	// show up direction arrow in down position
 	{
 		currentRing = "Down";
-		position = Vector3(0.0,9.0,0.0);
-		downArrowDirecionScript.ChangePosition(position);
-		downArrowDirecionScript.Show();
-		upArrowDirecionScript.Hide();
+		if (!dataSaverScript.getIsBaseline()) {
+			position = Vector3(0.0,10.0,0.0);
+			downArrowDirecionScript.ChangePosition(position);
+			downArrowDirecionScript.Show();
+			upArrowDirecionScript.Hide();
+			lslBCIInputScript.setMarker("up_pointingDown");
+		}
 	}
 	if (currentArrow[0] == "down_pointingUp")	// show down direction arrow in up position
 	{
 		currentRing = "Up";
-		position = Vector3(0.0,-8.0,0.0);
-		upArrowDirecionScript.ChangePosition(position);
-		upArrowDirecionScript.Show();
-		downArrowDirecionScript.Hide();
+		if (!dataSaverScript.getIsBaseline()) {
+			position = Vector3(0.0,-10.0,0.0);
+			upArrowDirecionScript.ChangePosition(position);
+			upArrowDirecionScript.Show();
+			downArrowDirecionScript.Hide();
+			lslBCIInputScript.setMarker("down_pointingUp");
+		}
 	}
 	if (currentArrow[0] == "down_pointingDown")	// show down direction arrow in down position
 	{
 		currentRing = "Down";
-		position = Vector3(0.0,-8.0,0.0);
-		downArrowDirecionScript.ChangePosition(position);
-		upArrowDirecionScript.Hide();
-		downArrowDirecionScript.Show();
+		if (!dataSaverScript.getIsBaseline()) {
+			position = Vector3(0.0,-10.0,0.0);
+			downArrowDirecionScript.ChangePosition(position);
+			upArrowDirecionScript.Hide();
+			downArrowDirecionScript.Show();
+			lslBCIInputScript.setMarker("down_pointingDown");
+		}
 	}
 	if (currentArrow[1] == "left_pointingRight")	// show up direction arrow in up position
 	{
 		currentRing += "Right";
-		position = Vector3(-15,-1.5,0.0);
-		rightArrowDirecionScript.ChangePosition(position);
-		rightArrowDirecionScript.Show();
-		leftArrowDirecionScript.Hide();
+		if (!dataSaverScript.getIsBaseline()) {
+			position = Vector3(-15,0,0.0);
+			rightArrowDirecionScript.ChangePosition(position);
+			rightArrowDirecionScript.Show();
+			leftArrowDirecionScript.Hide();
+			lslBCIInputScript.setMarker("left_pointingRight");
+		}
 	}
 	if (currentArrow[1] == "right_pointingRight")	// show up direction arrow in up position
 	{
 		currentRing += "Right";
-		position = Vector3(15,-1.5,0.0);
-		rightArrowDirecionScript.ChangePosition(position);
-		rightArrowDirecionScript.Show();
-		leftArrowDirecionScript.Hide();
+		if (!dataSaverScript.getIsBaseline()) {
+			position = Vector3(15,0,0.0);
+			rightArrowDirecionScript.ChangePosition(position);
+			rightArrowDirecionScript.Show();
+			leftArrowDirecionScript.Hide();
+			lslBCIInputScript.setMarker("right_pointingRight");
+		}
 	}
 	if (currentArrow[1] == "right_pointingLeft")	// show up direction arrow in up position
 	{
 		currentRing += "Left";
-		position = Vector3(15,-1.5,0.0);
-		leftArrowDirecionScript.ChangePosition(position);
-		leftArrowDirecionScript.Show();
-		rightArrowDirecionScript.Hide();
+		if (!dataSaverScript.getIsBaseline()) {
+			position = Vector3(15,0,0.0);
+			leftArrowDirecionScript.ChangePosition(position);
+			leftArrowDirecionScript.Show();
+			rightArrowDirecionScript.Hide();
+			lslBCIInputScript.setMarker("right_pointingLeft");
+		}
 	}
 	if (currentArrow[1] == "left_pointingLeft")	// show up direction arrow in up position
 	{
 		currentRing += "Left";
-		position = Vector3(-15,-1.5,0.0);
-		leftArrowDirecionScript.ChangePosition(position);
-		leftArrowDirecionScript.Show();
-		rightArrowDirecionScript.Hide();
+		if (!dataSaverScript.getIsBaseline()) {
+			position = Vector3(-15,0,0.0);
+			leftArrowDirecionScript.ChangePosition(position);
+			leftArrowDirecionScript.Show();
+			rightArrowDirecionScript.Hide();
+			lslBCIInputScript.setMarker("left_pointingLeft");
+		}
 	}
 
 
@@ -812,7 +925,15 @@ function EndLevel()
 	else {
 		SceneManagement.SceneManager.LoadScene ("stress_evaluation");
 	}*/
-	SceneManagement.SceneManager.LoadScene ("stress_evaluation");
+
+	if (dataSaverScript.getIsPractice() == true) {
+		dataSaverScript.updateBlockIndex();
+		SceneManagement.SceneManager.LoadScene ("successRates");
+	}
+	else {
+		dataSaverScript.updateBlockIndex();	
+		SceneManagement.SceneManager.LoadScene ("stress_evaluation");
+	}
 
 }
 
@@ -845,12 +966,13 @@ function ReadInPoints(fileName: String, heightToAdd: float, horizontalToAdd: flo
     for (line in lines) {
 
  		// Parse Line
-		var valSegs:String[]=line.Split(","[0]);
+		var valSegs:String[]=line.Split("\t"[0]);
 		if (valSegs.length>2) 
 		{
 			var xStr = valSegs[0];	
 	       	var yStr = valSegs[1];
 	       	var zStr = valSegs[2];
+
 	       	var widthString = valSegs[3];
 	       	// TRACING of raw (x,y,z)
 //	      	Debug.Log("xStr: " + xStr + ", yStr: " + yStr + ", zStr: " + zStr);
@@ -872,11 +994,11 @@ function ReadInPoints(fileName: String, heightToAdd: float, horizontalToAdd: flo
 function PlaceRings(prefabObj: Transform, positions: Vector3[], ringWidth: float, ringHeight: float, ringDepthConstant: float, isVisible: boolean) {
 	
 	// eyelinkScript must be initialized before this function is called (TO DO: insert check for this)
-	eyelinkScript.write("----- LOAD TRIAL -----");
+	//eyelinkScript.write("----- LOAD TRIAL -----");
 	AllRings = new Array();
 	for (i=0;i<positions.length;i++) {
 		//renderer = prefabObj.GetComponent('Renderer').material.color = color;
-		eyelinkScript.write("Created Object # " + (i+1) + " Ring Ring Ring " + positions[i] + " (" + ringWidth + ", " + ringHeight + ", " + ringDepth + ", 0)"); //"Ring Ring Ring" 
+		//eyelinkScript.write("Created Object # " + (i+1) + " Ring Ring Ring " + positions[i] + " (" + ringWidth + ", " + ringHeight + ", " + ringDepth + ", 0)"); //"Ring Ring Ring" 
 		thisRing = Instantiate(prefabObj, positions[i], Quaternion.identity); // place ring in sceneindicates name/type/tag are all "Ring"
 
 		//renderer.material.color.r = color.r;
@@ -886,7 +1008,7 @@ function PlaceRings(prefabObj: Transform, positions: Vector3[], ringWidth: float
 		ChangeVisibility(thisRing,isVisible);
 		AllRings.Push(thisRing); // keep track of rings in scene
 	}
-	eyelinkScript.write("----- START TRIAL -----");
+	//eyelinkScript.write("----- START TRIAL -----");
 	return AllRings;
 }
 

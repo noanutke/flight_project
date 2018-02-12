@@ -11,9 +11,6 @@ public class reportSuccessRates : MonoBehaviour {
 		GameObject loadCanvas =  GameObject.Find ("Canvas_load");
 		//lslBCIInputScript.LSL_BCI_Send_Markers_Enabled = true;
 		if (loadCanvas) {
-			//renderer = stressCanvas.GetComponent<CanvasGroup> ();
-			//renderer.alpha = 0f;
-			//renderer.blocksRaycasts = false;
 			loadCanvas.SetActive(false);
 		}
 		button = GameObject.Find ("Button");
@@ -34,13 +31,11 @@ public class reportSuccessRates : MonoBehaviour {
 
 		flightValueText.text = flightSuccess.ToString () + "%";
 
-		if (dataSaver.getLastBlockNbackStatus () == "withNback") {
+		if (dataSaver.getLastBlockNbackStatus () == true) {
 			nBackValueText.text = nBackSuccess.ToString () + "%";
 		} else {
 			nBackValueText.text = "";
 		}
-			
-			
 
 	}
 

@@ -60,6 +60,7 @@ private var maxAltitude = 15000.0; // max altitude allowed before flight is abor
 // CHANGED, FJ, 2015-05-11
 private var lslBCIInputScript; // Online communication with the BCI, here mainly to set markers
 private var fLastPitch = 0.0;
+private var fLastYaw = 0.0;
 
 private var arrows: GameObject;
 //private var transform_Arrows: Transform;
@@ -133,18 +134,24 @@ function setSpeed(moveSpeed) {
 
 function Update()
 {	
+	if (this.enabled == false) {
+		return;
+	}
 	var input = Input.touches;
 	var names = Input.GetJoystickNames();
 
-    if(Input.anyKey){
-    	nBackScript.buttonPressed();
+    if(Input.GetKeyDown(KeyCode.JoystickButton0)){
+    	nBackScript.nbackButtonPressed();
+    }
+    else if(Input.GetKeyDown(KeyCode.JoystickButton1)){
+    	nBackScript.bipButtonPressed();
     }
 	// Move forward	
 	transform.Translate(Vector3.forward*Time.deltaTime*speed);
 	//transform_Arrows.Translate(Vector3.forward*Time.deltaTime*speed);
 	
 
-	if (transform.position.z<0.0) {
+	if (transform.position.z<-2000.0) {
 		// Implement sigmoid takeoff pattern that ends at (x=0, y=firstRingYpos, z=0)
 		transform.position.y = initialPos.y + (firstRingPos.y-initialPos.y)/(1.0 + Mathf.Exp( (transform.position.z-initialPos.z/2) / (initialPos.z/10) ) );
 		//transform_Arrows.position.y = initialPosArrows.y + (firstRingPos.y-initialPosArrows.y)/(1.0 + Mathf.Exp( (transform.position.z-initialPosArrows.z/2) / (initialPosArrows.z/10) ) );
@@ -166,13 +173,14 @@ function Update()
 	bufferPos = bufferPos % BUFFER_SIZE;	
 	
 	// Get new inputs
-	var newPitch = Input.GetAxis("Vertical") * (Time.deltaTime * pitchSpeed);
+	var newPitch = -Input.GetAxis("Vertical") * (Time.deltaTime * pitchSpeed);
 	var newYaw = Input.GetAxis("Horizontal") * (Time.deltaTime * yawSpeed);
 	// Add to buffer
 	pitchBuffer[bufferPos] = newPitch;
 	yawBuffer[bufferPos] = newYaw;	
 		
 	var fNewPitch : float = newPitch;
+	var fNewYaw : float = newYaw;
 		
 		
 	// CHANGED, FJ, 2015-05-11 --------------------
@@ -185,7 +193,7 @@ function Update()
 		{
 			// Set a general stick-movement marker into the data stream via LSL
 			// This marker will be the same for every stick movement.
-			lslBCIInputScript.setMarker ("StickMvmtPitch_All");
+			runFlightScript.setMarkerForControlFlight ("StickMvmtPitch_All");
 
 			// Add a marker to indicate movement of the stick in pitch direction as
 			// defined by a change of the pitch value from 0 to non 0. RunFlightSim
@@ -194,12 +202,30 @@ function Update()
 		}
 	}
 
+	if ( fLastYaw == 0.0f )
+	{
+		// Is the current pitch input other than 0?
+		if ( fNewYaw != 0.0f )
+		{
+			// Set a general stick-movement marker into the data stream via LSL
+			// This marker will be the same for every stick movement.
+			runFlightScript.setMarkerForControlFlight ("StickMvmtYaw_All");
+
+			// Add a marker to indicate movement of the stick in pitch direction as
+			// defined by a change of the pitch value from 0 to non 0. RunFlightSim
+			// annotates the string of this marker with the size of the next ring.
+			runFlightScript.sendMarkerWithRingSize ( "StickMvmYaw" );
+		}
+	}
+
 	
 	// Save current PITCH input for use in next sample!
 	fLastPitch = fNewPitch;
+	fLastYaw = fNewYaw;
 	
 	// Always attempt to send current pitch input status via LSL
-	lslBCIInputScript.sendStickMvmt ( fNewPitch );
+	runFlightScript.setMarkerForPitch ( fNewPitch );
+	runFlightScript.setMarkerForYaw ( fNewYaw );
 
 	// END-CHANGES FJ ----------------------------
 	
@@ -264,7 +290,9 @@ function GetNewDrift(driftAmp: float)
 {
 	newDrift = driftAmp*(Random.value-0.5); // uniform distribution
 	// log new drift
-	eyelinkScript.write("Drift = " + newDrift);
+	if (eyelinkScript) {
+		eyelinkScript.write("Drift = " + newDrift);
+	}
 	return newDrift;
 }
 
