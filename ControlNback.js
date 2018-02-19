@@ -153,7 +153,7 @@ function initilaizeCurrentBlockProperties() {
 	this.letters = dataSaverScript.getLetters();
 	this.colors = dataSaverScript.getColors();
 	this.sounds = dataSaverScript.getAlarms();
-	this.bips = dataSaverScript.getBips();
+
 
 	if (dataSaverScript.getIsBaseline()) {
 		return;
@@ -166,6 +166,9 @@ function initilaizeCurrentBlockProperties() {
 	withNback = dataSaverScript.getWithNBack();
 	ringSize = dataSaverScript.getRingSize();
 	moveSpeed = dataSaverScript.moveSpeed;
+	if (n == "0" || withNback == false) {
+		withStress = false;
+	}
 
 
 }
@@ -300,11 +303,11 @@ function EndLevel()
 function readNextLetter() {
 	targetPresentedLastTrial = targetPresented;
 	nbackButtonPressedForLastTrial = nbackButtonPressedForTrial;
-	bipButtonPressedForLastTrial = bipButtonPressedForTrial;
+
 	if (currentLetter != -1) {
 		setFailureIfLastTrialMissed();
 	}
-	bipAppeared = false;
+
 	currentLetter += 1;
 
 
@@ -320,7 +323,7 @@ function readNextLetter() {
 
 	tooSlowLastTrial = tooSlow;
 	nbackButtonPressedForTrial = false;
-	bipButtonPressedForTrial = false;
+
 	tooSlow = false;
 
 	var letter = letters[currentLetter];
@@ -389,25 +392,6 @@ function initSounds(audioObjects) {
 	alarm2 = getAudioObjectForFileName(audioObjects, 'alarm');
 }
 
-function bipButtonPressed() {
-	lslBCIInputScript.setMarker("bipButtonPressed");
-
-	if(bipButtonPressedForTrial) {
-		return;
-	}
-	bipButtonPressedForTrial = true;
-	var currentTime = Time.time;
-	var rt = currentTime - lastLetterTime - 0.5 - 0.08;
-	if (bipAppeared == true ) {		
-			lslBCIInputScript.setMarker ("bipHIT" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
-		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
-	}
-	else {
-			lslBCIInputScript.setMarker ("bipFA" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
-	"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
-	}
-
-}
 
 function nbackButtonPressed() {
 	lslBCIInputScript.setMarker("nbackButtonPressed");
@@ -452,7 +436,7 @@ function isTarget() {
 }
 
 function setPerformanceLevel() {
-	playBipIfNeeded();
+
 	if (withStress == false ) {
 		return;
 	}
@@ -514,35 +498,18 @@ function playAlarmInNeeded() {
 		return;
 	}
 	var rand = Random.Range(1, 3);
-	if (sounds[currentLetter] == "sound") {
+	if (sounds[currentLetter] == "alarm") {
 		parallelPortScript.OutputToParallel(3);
-		if (rand == 1) {
-			alarm.Play();
-		}
-		else {
-			alarm2.Play();
-		}
-		lslBCIInputScript.setMarker ("Alarm" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize +
+		alarm2.Play();
 
-		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
-	}	
-}
-
-function playBipIfNeeded() {
-	if (withNback == false) {
-		return;
+		lslBCIInputScript.setMarker ("Alarm" + "_type_alarm");
 	}
-	if (currentLetter >= 12) {
-		return;
-	}
-	if (bips[currentLetter] == "bip") {
-		bip.Play();
-		lslBCIInputScript.setMarker ("Bip" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize +
+	else if(sounds[currentLetter] == "scream") {
+		parallelPortScript.OutputToParallel(3);
+		alarm.Play();
 
-		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
-		bipAppeared = true;	
+		lslBCIInputScript.setMarker ("Alarm" + "_type_scream");
 	}
-
 }
 
 function setFailureIfLastTrialMissed() {
@@ -559,15 +526,4 @@ function setFailureIfLastTrialMissed() {
 		}
 	}
 
-	if (!bipButtonPressedForTrial) {
-		if (bipAppeared == true) {
-			lslBCIInputScript.setMarker ("bipMISS" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
-
-		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
-		}
-		else {
-			lslBCIInputScript.setMarker ("bipCorrectRejection" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
-		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
-		}
-	}
 }
