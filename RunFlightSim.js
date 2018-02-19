@@ -45,6 +45,7 @@ var downArrowDirecionScript: changeDownDirectionArrow;
 var leftArrowDirecionScript: changeLeftDirectionArrow;
 var rightArrowDirecionScript: changeRightDirectionArrow;
 var crossScript: crossControl;
+var fixation: Sprite;
 
 
 var currentRing = "UpRight";
@@ -323,6 +324,7 @@ function Start()
 	isPractice = controlNbackScript.isPractice;
 	controlNbackScript.initSounds(audioObjects);
 	nLevel = dataSaverScript.getN();
+
 	blockOrdinal = dataSaverScript.getType();
 	stroopCondition = dataSaverScript.getStroopCondition();
 	condition = dataSaverScript.condition;
@@ -337,17 +339,13 @@ function Start()
 
 	// Stop update functions from running while we start up
 	this.enabled = false;
-	eyelinkScript = gameObject.AddComponent(eyelink); // to interface with eye tracker
-	gameObject.AddComponent(Constants); // to get constants
-	flightScript = gameObject.AddComponent(ControlFlight); // to enable flight controls
 
+	 // to get constants
+	if (nLevel != 0) {
+		gameObject.AddComponent(Constants);
+		flightScript = gameObject.AddComponent(ControlFlight); // to enable flight controls
+	}
 
-	// Get eyelink script for logging	
-//	eyelinkScript = gameObject.GetComponent(eyelink); //gets eye position and records messages
-
-
-	// CHANGED, FJ, 2015-05-11
-	//lslBCIInputScript = gameObject.AddComponent(LSL_BCI_Input); // To interface with online BCI
 
 	lslBCIInputScript = dataSaverScript.getLslScript();
 
@@ -380,155 +378,103 @@ function Start()
 		EDF_filename = ""; //means "do not transfer an StartTracker file to this computer"
 	}
 	
-	//Start eye tracker
-	//print("--- subject: " + subject + "  session: " + session + " ---"); //print commands act as backup to eyelink logging/commands 
-	var startOut = eyelinkScript.StartTracker(dataSaverScript.subjectNumber);
-	eyelinkScript.SendToEEG(Constants.START_RECORDING);
-
-	eyelinkScript.write("getTime");
-	var t = eyelinkScript.getTime();
-	lslBCIInputScript.setMarker ("eyeLinkTime_" + t);
-
-
-
-	//yield WaitForSeconds(0.2);
-	
-	//Log experiment parameters
-
-	eyelinkScript.write("subject: " + subject);
-	eyelinkScript.write("session: " + session);
-	eyelinkScript.write("Date: " + System.DateTime.Now);
-
-	eyelinkScript.write("EDF_filename: " + EDF_filename);
-	eyelinkScript.write("level: " + Application.loadedLevelName);
-	eyelinkScript.write("trialTime: " + trialTime);
-	
-	eyelinkScript.write("routeFilename: " + routeFilename);
-	eyelinkScript.write("ringDepth: " + ringDepth);
-	
-	eyelinkScript.write("isPhotodiodeUsed: " + isPhotodiodeUsed);
-	eyelinkScript.write("photodiodeSize: " + photodiodeSize);
-	eyelinkScript.write("syncDelay: " + syncDelay);
-
-
-	eyelinkScript.write("driftAmplutude: " + driftAmplitude);
-	eyelinkScript.write("minDriftDelay: " + minDriftDelay);
-	eyelinkScript.write("maxDriftDelay: " + maxDriftDelay);
-
-	eyelinkScript.write("controls.moveSpeed: " + moveSpeed);
-	eyelinkScript.write("controls.pitchSpeed: " + pitchSpeed);
-	eyelinkScript.write("controls.lockRoll: " + lockRoll);
-	eyelinkScript.write("controls.lockXpos: " + lockXpos);
-
-	eyelinkScript.write("controls.filterDelay: " + filterDelay);	
-	eyelinkScript.write("controls.filterUpTime: " + filterUpTime);	
-	eyelinkScript.write("controls.filterDownTime: " + filterDownTime);	
-	
-		
-	eyelinkScript.write("screen.width: " + Screen.width);
-	eyelinkScript.write("screen.height: " + Screen.height);
-	eyelinkScript.write("eyelink.offset_x: " + offset_x);
-	eyelinkScript.write("eyelink.offset_y: " + offset_y);
-	eyelinkScript.write("eyelink.gain_x: " + gain_x);
-	eyelinkScript.write("eyelink.gain_y: " + gain_y);
-	eyelinkScript.write("----- END SESSION PARAMETERS -----");
-
-
-	 //------- UPPER RIGHT RING LOCATIONS 	
-	// Read in ring locations from text file
- 	var upperRightRingInfo = ReadInPoints(routeFilename, 50.00, 50.00);
- 	upperRightRingPositions = upperRightRingInfo[0];
- 	ringWidths = upperRightRingInfo[1];
- 	
-	// Put rings in scene 	
-	var upperCenterWidths2 = new Array();
-	for(i=0;i<ringWidths.length;i++)
-	{	
-		upperCenterWidths2.Push(10.0);
-	}
-
- 	//------- LOWER RIGHT RING LOCATIONS 	
-	// Read in ring locations from text file
- 	var lowerRightRingInfo = ReadInPoints(routeFilename, -50.00, 50.00);
- 	lowerRightRingPositions = lowerRightRingInfo[0];
- 	//lowerRingWidths = lowerRingInfo[1];
-
-	var lowerCenterWidths2 = new Array();
-	for(i=0;i<ringWidths.length;i++)
-	{	
-		lowerCenterWidths2.Push(10.0);
-	}
-
-
-	//------- UPPER LEFT RING LOCATIONS 	
-	// Read in ring locations from text file
- 	var upperLeftRingInfo = ReadInPoints(routeFilename, 50.00, -50.00);
- 	upperLeftRingPositions = upperLeftRingInfo[0];
- 	ringWidths = upperLeftRingInfo[1];
- 	
-	// Put rings in scene 	
-	for(i=0;i<ringWidths.length;i++)
-	{	
-		upperCenterWidths2.Push(10.0);
-	}
-
- 	//------- LOWER LEFT RING LOCATIONS 	
-	// Read in ring locations from text file
- 	var lowerLeftRingInfo = ReadInPoints(routeFilename, -50.00, -50.00);
- 	lowerLeftRingPositions = lowerLeftRingInfo[0];
- 	//lowerRingWidths = lowerRingInfo[1];
-
-	for(i=0;i<ringWidths.length;i++)
-	{	
-		lowerCenterWidths2.Push(10.0);
-	}
-
-
-	// Put all rings in scene 
-
-	var centerWidths: float[] = upperCenterWidths2.ToBuiltin(float) as float[]; 
-
 	ringSize = dataSaverScript.getRingSize();
-	if (ringSize == "big") {
-		width = 90;
-	}
-	else if (ringSize == "medium") {
-		width = 60;
-	}
-	else {
-		width = 30;
-	}
+	if (nLevel != 0) {
+		 //------- UPPER RIGHT RING LOCATIONS 	
+		// Read in ring locations from text file
+	 	var upperRightRingInfo = ReadInPoints(routeFilename, 50.00, 50.00);
+	 	upperRightRingPositions = upperRightRingInfo[0];
+	 	ringWidths = upperRightRingInfo[1];
+	 	
+		// Put rings in scene 	
+		var upperCenterWidths2 = new Array();
+		for(i=0;i<ringWidths.length;i++)
+		{	
+			upperCenterWidths2.Push(10.0);
+		}
 
- 	UpperRightRingArray = PlaceRings(centerPrefab,upperRightRingPositions, width, width, ringDepth, true);
- 	LowerRightRingArray = PlaceRings(ringPrefab,lowerRightRingPositions, width, width, ringDepth, true);
- 	UpperLeftRingArray = PlaceRings(centerPrefab,upperLeftRingPositions, width, width, ringDepth, true);
- 	LowerLeftRingArray = PlaceRings(ringPrefab,lowerLeftRingPositions, width, width, ringDepth, true);
- 	// RingArray = PlaceRings(ringPrefab,ringPositions, 110, ringWidths, ringDepth, areAllRingsVisible);
- 	//CenterArray = PlaceRings(centerPrefab,ringPositions, centerWidths, centerWidths, centerDepth, areAllRingsVisible);
- 	// initialize nextRingBounds
- 	nextUpperRightRingBounds = ObjectInfo.ObjectBounds(UpperRightRingArray[iNextRing].gameObject);
- 	nextLowerRightRingBounds = ObjectInfo.ObjectBounds(LowerRightRingArray[iNextRing].gameObject);
- 	nextUpperLeftRingBounds = ObjectInfo.ObjectBounds(UpperLeftRingArray[iNextRing].gameObject);
- 	nextLowerLeftRingBounds = ObjectInfo.ObjectBounds(LowerLeftRingArray[iNextRing].gameObject);
+	 	//------- LOWER RIGHT RING LOCATIONS 	
+		// Read in ring locations from text file
+	 	var lowerRightRingInfo = ReadInPoints(routeFilename, -50.00, 50.00);
+	 	lowerRightRingPositions = lowerRightRingInfo[0];
+	 	//lowerRingWidths = lowerRingInfo[1];
+
+		var lowerCenterWidths2 = new Array();
+		for(i=0;i<ringWidths.length;i++)
+		{	
+			lowerCenterWidths2.Push(10.0);
+		}
+
+
+		//------- UPPER LEFT RING LOCATIONS 	
+		// Read in ring locations from text file
+	 	var upperLeftRingInfo = ReadInPoints(routeFilename, 50.00, -50.00);
+	 	upperLeftRingPositions = upperLeftRingInfo[0];
+	 	ringWidths = upperLeftRingInfo[1];
+	 	
+		// Put rings in scene 	
+		for(i=0;i<ringWidths.length;i++)
+		{	
+			upperCenterWidths2.Push(10.0);
+		}
+
+	 	//------- LOWER LEFT RING LOCATIONS 	
+		// Read in ring locations from text file
+	 	var lowerLeftRingInfo = ReadInPoints(routeFilename, -50.00, -50.00);
+	 	lowerLeftRingPositions = lowerLeftRingInfo[0];
+	 	//lowerRingWidths = lowerRingInfo[1];
+
+		for(i=0;i<ringWidths.length;i++)
+		{	
+			lowerCenterWidths2.Push(10.0);
+		}
+
+
+		// Put all rings in scene 
+
+		var centerWidths: float[] = upperCenterWidths2.ToBuiltin(float) as float[]; 
+
+
+		if (ringSize == "big") {
+			width = 90;
+		}
+		else if (ringSize == "medium") {
+			width = 60;
+		}
+		else {
+			width = 30;
+		}
+
+	 	UpperRightRingArray = PlaceRings(centerPrefab,upperRightRingPositions, width, width, ringDepth, true);
+	 	LowerRightRingArray = PlaceRings(ringPrefab,lowerRightRingPositions, width, width, ringDepth, true);
+	 	UpperLeftRingArray = PlaceRings(centerPrefab,upperLeftRingPositions, width, width, ringDepth, true);
+	 	LowerLeftRingArray = PlaceRings(ringPrefab,lowerLeftRingPositions, width, width, ringDepth, true);
+	 	// RingArray = PlaceRings(ringPrefab,ringPositions, 110, ringWidths, ringDepth, areAllRingsVisible);
+	 	//CenterArray = PlaceRings(centerPrefab,ringPositions, centerWidths, centerWidths, centerDepth, areAllRingsVisible);
+	 	// initialize nextRingBounds
+	 	nextUpperRightRingBounds = ObjectInfo.ObjectBounds(UpperRightRingArray[iNextRing].gameObject);
+	 	nextLowerRightRingBounds = ObjectInfo.ObjectBounds(LowerRightRingArray[iNextRing].gameObject);
+	 	nextUpperLeftRingBounds = ObjectInfo.ObjectBounds(UpperLeftRingArray[iNextRing].gameObject);
+	 	nextLowerLeftRingBounds = ObjectInfo.ObjectBounds(LowerLeftRingArray[iNextRing].gameObject);
 
  	//------- FLIGHT CONTROLS 	
  	// pass parameters to flight control script
 
+	 	flightScript.speed = moveSpeed;
+	 	flightScript.pitchSpeed = pitchSpeed;
+	 	flightScript.lockRoll = lockRoll;
+	 	flightScript.lockXpos = lockXpos;
+	 	
+		flightScript.driftAmplitude = driftAmplitude;
+	 	flightScript.minDriftDelay = minDriftDelay;
+	 	flightScript.maxDriftDelay = maxDriftDelay;
 
- 	flightScript.speed = moveSpeed;
- 	flightScript.pitchSpeed = pitchSpeed;
- 	flightScript.lockRoll = lockRoll;
- 	flightScript.lockXpos = lockXpos;
- 	
-	flightScript.driftAmplitude = driftAmplitude;
- 	flightScript.minDriftDelay = minDriftDelay;
- 	flightScript.maxDriftDelay = maxDriftDelay;
-
-	flightScript.filterDelay = filterDelay;
-	flightScript.filterUpTime = filterUpTime;
-	flightScript.filterDownTime = filterDownTime;
-
+		flightScript.filterDelay = filterDelay;
+		flightScript.filterUpTime = filterUpTime;
+		flightScript.filterDownTime = filterDownTime;
+	}
 	// Try to pause to allow to start recording!
+	crossScript.Show();
 	yield WaitForSeconds(3);
 
 	currentBlockNumber = dataSaverScript.currentBlockIndex;
@@ -539,6 +485,13 @@ function Start()
 		"_isBaseline_"  + dataSaverScript.getIsBaseline());
 	// --------------------------------------------------------
 	parallelPortScript.OutputToParallel(1);
+	if (nLevel == 0) {
+		crossScript.Show();
+		return;
+	}
+	else {
+		crossScript.Hide();
+	}
 	flightScript.setSpeed(moveSpeed);
 	flightScript.StartFlight(controlNbackScript);
 	SwitchArrowIfNeeded(iNextRing);
@@ -559,32 +512,9 @@ function Start()
 }
 
 function Update() {
-	
-	//UPDATE TIME FOR THIS FRAME
-	var t = eyelinkScript.getTime();
-
-	// When the specified trial time has elapsed, end the trial.
-	if (t > trialEndTime) {
-		EndLevel();
-		Application.LoadLevel("Loader"); //Go back to the Loader Scene
-		return; //stop executing Update (to avoid, e.g., destroying things twice)
+	if (nLevel == 0) {
+		return;
 	}
-	
-	//SYNC EYELINK AND EEG
-	if (t>syncTime) {
-		//toggle parallel port output
-		portIsSync = !portIsSync; 
-		if (portIsSync) {
-			eyelinkScript.write("sync");
-		}
-		//get next sync time
-		syncTime = t + syncDelay;
-	}
-
-	// var carRotation = cam.transform.rotation.eulerAngles;
-	// --------------------------------------------------------
-
-	// Changed, FJ, 2016/08/04, Send plane position, HMD orientation via LSL
 
 	lslBCIInputScript.sendFlightParams ( transform.position.x, transform.position.y, transform.position.z, 
 	nextUpperRightRingBounds.center.x, nextUpperRightRingBounds.center.y, 
@@ -643,7 +573,7 @@ function checkIfRingFailedAndSendTrigggers(ringBounds) {
 	if (transform.position.y < ringBounds.min.y || transform.position.y > ringBounds.max.y  ||
 		transform.position.x < ringBounds.min.x || transform.position.x > ringBounds.max.x)
 	{
-		eyelinkScript.write("RingFailed");
+
 		//lslBCIInputScript.setMarker (currentRing + "Fail_Size_" + Mathf.Abs(ringBounds.max.y - ringBounds.min.y));
 		var ringSize = Mathf.Abs(ringBounds.max.y - ringBounds.min.y);
 		lslBCIInputScript.setMarker("RingFailed_Condition_" + condition + "_nLevel_" + nLevel + "_ringSize_" + ringSize + 
@@ -655,7 +585,7 @@ function checkIfRingFailedAndSendTrigggers(ringBounds) {
 		return true;
 	}
 	else {
-		eyelinkScript.write("RingPassed");
+
 		sendTriggerRingPassed(ringBounds);
 		controlNbackScript.setRingSuccess();
 		return false;
@@ -849,82 +779,34 @@ function EndLevel()
 		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition + "_isPractice_" + isPractice);
 	// --------------------------------------------------------
 
+	if(UpperRightRingArray && UpperRightRingArray.length > 0) {
 	//Compute Performance
-	courseCompleted = ((iNextRing)*100/UpperRightRingArray.length);
-	
-	var sum = 0;
-	for (var i=0; i<ringAccuracy.length; i++) 
-	{ 
-		sum += ringAccuracy[i];
+		courseCompleted = ((iNextRing)*100/UpperRightRingArray.length);
 	}
-	
-	if (ringAccuracy.length>0) 
-	{
-		courseAccuracy = 100 - sum/ringAccuracy.length;
-	} 
-	else 
-	{
-		courseAccuracy = 0;
+
+	if (ringAccuracy) {
+		var sum = 0;
+		for (var i=0; i<ringAccuracy.length; i++) 
+		{ 
+			sum += ringAccuracy[i];
+		}
+		
+		if (ringAccuracy.length>0) 
+		{
+			courseAccuracy = 100 - sum/ringAccuracy.length;
+		} 
+		else 
+		{
+			courseAccuracy = 0;
+		}
 	}
-	
-	//loaderScript.courseCompleted = courseCompleted.ToString();
-	//loaderScript.courseAccuracy = courseAccuracy.ToString();
-
-
-	// Changed, FJ, 20160915 - Print end percentage, set marker with End Percentage!!
-
-	//print ( "\n#########################################\n\n" );
-
-	//print ( "\n # RESULT: Course completed >> " + loaderScript.courseCompleted + "% <<" );
-
-	//print ( "\n#########################################\n\n" );
-
-	//lslBCIInputScript.setMarker ("Run_End_Comp_" + loaderScript.courseCompleted );
-	//lslBCIInputScript.setMarker ("Run_End_Cond_" + expCondition + "_Comp_" + loaderScript.courseCompleted );
-
-	// --------------------------------------------------------
-
-
-	// Changed, FJ, 20160915 - Write results to CSV file!
-
-	var t: System.DateTime = System.DateTime.Now;
-
-	//var filePath = "C:/_DATA/BF_CLoop_02_Main/Res_Times_Sub_" + subject + "_" + String.Format("{0:D4}{1:D2}{2:D2}",t.Year,t.Month,t.Day) + ".csv";
-
-    //var sw : StreamWriter = new StreamWriter ( filePath, true );
-
-   // sw.WriteLine ( "" + String.Format("{0:D4}_{1:D2}_{2:D2}_{3:D2}_{4:D2}_{5:D2}",t.Year,t.Month,t.Day,t.Hour,t.Minute,t.Second) + ",   Sub"  + subject + ",   Cond" + expCondition + ",   " + routeFilename + ",   " + loaderScript.courseCompleted + "%,   " + loaderScript.courseAccuracy + "%" );
-
-    //sw.Flush ( );
-    //sw.Close ( );
-
-	// --------------------------------------------------------
 
 																		
 	//disable updates
 	this.enabled=false;
-	flightScript.enabled = false;
-	//Log what we're doing
-	eyelinkScript.write("----- END TRIAL -----");
-//	yield WaitForSeconds(0.2);
-	eyelinkScript.SendToEEG(Constants.END_RECORDING);
-//	yield WaitForSeconds(0.2);
-//	DestroyAll(); //Clean up objects
-	// Close the tracker and log files (important for saving!)
-	eyelinkScript.StopTracker(EDF_filename); //transfer file to current directory with given filename
-	//Application.LoadLevel("Loader"); //Go back to the Loader Scene
-
-	/*
-	var canvasStress = GameObject.Find ("Canvas_stress");
-	if (canvasStress) {
-		var rendererStress = canvasStress.GetComponent(CanvasGroup) as CanvasGroup;
-		rendererStress.alpha = 1f;
-		rendererStress.blocksRaycasts = true;
-		canvasStress.setActive(true);
+	if(flightScript) {
+		flightScript.enabled = false;
 	}
-	else {
-		SceneManagement.SceneManager.LoadScene ("stress_evaluation");
-	}*/
 
 	if (dataSaverScript.getIsPractice() == true) {
 		dataSaverScript.updateBlockIndex();
@@ -992,9 +874,8 @@ function ReadInPoints(fileName: String, heightToAdd: float, horizontalToAdd: flo
 // Place rings at given points and log their positions
 //-----------------------//
 function PlaceRings(prefabObj: Transform, positions: Vector3[], ringWidth: float, ringHeight: float, ringDepthConstant: float, isVisible: boolean) {
-	
-	// eyelinkScript must be initialized before this function is called (TO DO: insert check for this)
-	//eyelinkScript.write("----- LOAD TRIAL -----");
+
+
 	AllRings = new Array();
 	for (i=0;i<positions.length;i++) {
 		//renderer = prefabObj.GetComponent('Renderer').material.color = color;
@@ -1050,12 +931,10 @@ function OnGUI () {
 //-----------------------//
 function LateUpdate () {
 
+	if (nLevel == 0) {
+		
+		return;
+	}
 
-	//Log Camera Position (truncate to 2 decimals) and rotation (don't truncate)
-	eyelinkScript.write("Camera at (" + transform.position.x.ToString("F2") + ", " + transform.position.y.ToString("F2") + ", " + transform.position.z.ToString("F2") + ")  rotation (" + transform.rotation.x + ", " + transform.rotation.y + ", " + transform.rotation.z +", " + transform.rotation.w + ")");	
-	
-	//Log Eye Position (truncate to 2 decimals)
-	eyelinkScript.UpdateEye_fixupdate();	
-	eyelinkScript.write("Eye at (" + eyelinkScript.x.ToString("F2") + ", " + eyelinkScript.y.ToString("F2") + ")");
 	
 }

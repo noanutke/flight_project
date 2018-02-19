@@ -112,6 +112,7 @@ public class start_nback : MonoBehaviour {
 
 
 		if (dataSaver) {
+
 			string subjectNumber = this.subjectNumberInput.text;
 			int speed = this.initSpeed ();
 			string condition = this.initStressCondition ();
@@ -153,16 +154,21 @@ public class start_nback : MonoBehaviour {
 		GameObject emptyObject = GameObject.Find ("dataSaver");
 		dataSaver dataSaver = emptyObject.GetComponent<dataSaver> ();
 		if (dataSaver) {
+			if (dataSaver.currentBlockIndex-1 == dataSaver.halfConditionIndex) {
+				SceneManager.LoadScene ("Instructions");
+				return;
+			}
 			string subjectNumber = this.subjectNumberInput.text;	
 			int speed = this.initSpeed ();
 			string condition = this.initStressCondition ();
+			string order = this.orderInput.text;
 
-			dataSaver.initCondition (condition, speed, subjectNumber);
+			dataSaver.initCondition (condition, speed, subjectNumber, order);
 		}
 		this.loadInstructions ();
 	}
 
-	void loadInstructions() {		
+	void loadInstructions() {
 		SceneManager.LoadScene ("stress_evaluation");
 	}
 

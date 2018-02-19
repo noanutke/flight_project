@@ -417,11 +417,3 @@ function OnGUI ()
 	if (doWindow)
 	GUILayout.Window (0, Rect (0,20,200,120), DoWindow, "Filter Controls");
 }
-
-//-----------------------//
-// Log Controls
-//-----------------------//
-function LateUpdate() {
-	//Log latest control
-	eyelinkScript.write("Controls = (" + pitchBuffer[bufferPos] + "," + yawBuffer[bufferPos] + ")"); 
-}

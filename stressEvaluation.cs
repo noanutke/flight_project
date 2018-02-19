@@ -173,7 +173,11 @@ public class stressEvaluation : MonoBehaviour {
 
 		this.writeValuesToFile ();
 		this.lslScript.setMarker ("endStressEvaluation");
-		SceneManager.LoadScene ("load_evaluation");
+		if (dataSaverScript.currentBlockIndex == 0) {
+			SceneManager.LoadScene ("Instructions");
+		} else {
+			SceneManager.LoadScene ("load_evaluation");
+		}
 	}
 
 	public void writeValuesToFile() {

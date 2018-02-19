@@ -295,11 +295,12 @@ public class loadEvaluation : MonoBehaviour {
 		this.writeValuesToFile ();
 		this.lslScript.setMarker ("endLoadEvaluation");
 
-		if (dataSaverScript && dataSaverScript.currentBlockIndex < dataSaverScript.getBlockLength()) {
+		if (dataSaverScript.currentBlockIndex-1 == dataSaver.halfConditionIndex) {
+			SceneManager.LoadScene ("N_back_input");
 
+		} else if (dataSaverScript && dataSaverScript.currentBlockIndex < dataSaverScript.getBlockLength ()) {
 			SceneManager.LoadScene ("Instructions");
-		}
-		else {
+		} else {
 			SceneManager.LoadScene ("N_back_input");
 		}
 

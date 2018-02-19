@@ -5,15 +5,15 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using System.IO;
 using System.Text;
+using System.Linq;
 
 
 
 public class dataSaver : MonoBehaviour {
-
+	public List<int> fixationsArray = new List<int>(new int[]{3,3,3,3,3,3,6,6,6,6,6,6,9,9,9,9});
 	public bool withEyeTracker = false;
-	public int halfConditionIndex = 8;
-	public int fullConditionIndex = 17;
-	public int currentBlockIndex;
+
+	public int currentBlockIndex = -1;
 	public List<Dictionary<string, string>> blocksArray  = new List<Dictionary<string, string>>();
 	public string condition;
 	public int moveSpeed;
@@ -28,13 +28,14 @@ public class dataSaver : MonoBehaviour {
 	public static int redAmountInBBlocks = 5;
 	public static int redAmountInABlocks = 6;
 	public static int targetAmountRequired = 4;
-
+	public static int halfConditionIndex = 8;
+	public static int fullConditionIndex = 17;
 
 	public static int ringsAmountForCalibrationPhase = 10;
 	public static int ringsFailuresForCalibrationTarget = 2;
 
 
-	private class Block {
+	public class Block {
 		public List<string> letters = new List<string>();
 		public List<string> colors = new List<string>();
 		public List<string> sounds = new List<string>();
@@ -49,6 +50,7 @@ public class dataSaver : MonoBehaviour {
 		public string subjectNumber;
 		public string targetLetter = "";
 		public bool isBaseline = false;
+		public string fileName = "";
 
 		private bool checkTargetsDemands(List<int> indices) {
 			indices.Sort ();
@@ -200,6 +202,9 @@ public class dataSaver : MonoBehaviour {
 		}
 
 		public void generateAversiveSound() {
+			List<string> soundsTypes = new List<string> (new string[] {"alarm", "alarm", "scream", "scream", "scream"});
+			soundsTypes = dataSaver.shuffle (soundsTypes);
+
 			this.sounds = new List<string> ();
 			int lettersAmount = 12;
 			if (this.blockType == "b") { // we have zero alarms
@@ -211,10 +216,12 @@ public class dataSaver : MonoBehaviour {
 				int randomIndex = Random.Range (0, dataSaver.redAmountInABlocks);
 				int redIndex = 0;
 				int i = 0;
+				int indexInSoundsTypes = 0;
 				for (i = 0; i < lettersAmount; i++) {
 					if (this.colors [i] == "red") {
 						if (redIndex == randomIndex) {
-							this.sounds.Insert (i, "sound");
+							this.sounds.Insert (i, soundsTypes[indexInSoundsTypes]);
+							indexInSoundsTypes++;
 						} else {
 							this.sounds.Insert (i, "no");
 						}
@@ -225,6 +232,21 @@ public class dataSaver : MonoBehaviour {
 				}
 
 			}
+		}
+
+		public void readInputPropertiesForBlock(string order = "1") {
+			string path = Application.dataPath + "/orders/order" + order + "/" + this.fileName + ".txt";
+			StreamReader stream = new StreamReader (path);
+
+			string[] lettersArray = stream.ReadLine ().Split (',');
+			this.letters = new List<string> (lettersArray);
+			stream.ReadLine ();
+			string[] colorsArray = stream.ReadLine ().Split (',');
+			this.colors = new List<string> (colorsArray);
+			stream.ReadLine ();
+			string[] soundsArray = stream.ReadLine ().Split (',');
+			this.sounds = new List<string> (soundsArray);
+
 		}
 
 		public void generateColors() {
@@ -308,13 +330,27 @@ public class dataSaver : MonoBehaviour {
 		return list;
 	}
 
-	public bool initCondition(string stressCondition, int speed, string subjectNumber) {
+	public static List<int> shuffleInt(List<int> list)  
+	{  
+		int n = list.Count;  
+		while (n > 1) {  
+			n--;  
+			int k = Random.Range (0, n+1);
+			int value = list[k];  
+			list[k] = list[n];  
+			list[n] = value;  
+		}
+		return list;
+	}
+
+	public bool initCondition(string stressCondition, int speed, string subjectNumber, string order) {
 		this.blocksCount = 12;
 		this.currentBlockIndex = 0;
 		this.subjectNumber = subjectNumber;
 		this.condition = stressCondition;
 		this.moveSpeed = speed;
-		this.blocksOrder = this.initBlocksOrder ();
+		//this.blocksOrder = this.initBlocksOrder (order);
+		this.blocksOrder = this.getBlocksFromFile (order);
 		return true;
 	}
 
@@ -351,15 +387,62 @@ public class dataSaver : MonoBehaviour {
 		return true;
 	}
 
+	public List<Block> getBlocksFromFile(string order = "1") {
+		string path = Application.dataPath + "/orders/order" + order + "/" + "blockOrder.txt";
+		StreamReader stream =new StreamReader(path);
+		string blocksOrder = stream.ReadLine ();
+		string[] blocks = blocksOrder.Split (',');
+		stream.Close ();
 
-	private List<Block> initBlocksOrder() {
+		List<Block> allBlocks = new List<Block> ();
+
+		foreach (string currentBlock in blocks) {
+			string[] parts = currentBlock.Split ('_');
+
+			Block block = new Block ();
+			block.fileName = currentBlock;
+			block.ringSize = parts [1];
+			block.blockType = parts [2];
+			if (parts [0] == "baseline") {
+				block.isBaseline = true;
+				block.isPractice = false;
+				block.isCalibration = false;
+				block.withNback = false;
+				block.nLevel = "1";
+				allBlocks.Insert (allBlocks.Count, block);
+
+				continue;
+			}
+			block.isBaseline = false;
+			block.nLevel = parts [0];
+			block.isPractice = false;
+			block.isCalibration = false;
+			block.withNback = true;
+
+
+			if (block.nLevel == "0") {
+				if (block.blockType == "a") {
+					block.targetLetter = "1";
+				} else {
+					block.targetLetter = "2";
+				}
+			}
+
+			block.readInputPropertiesForBlock (order);
+			allBlocks.Insert (allBlocks.Count, block);
+		}
+
+		return allBlocks;
+	}
+
+
+
+	public List<Block> initBlocksOrder(string order) {
 		List<Block> allBlocks = new List<Block> ();
 		List<string> blocks1 = new List<string> ();
 		List<string> blocks2 = new List<string> ();
 
 		int rand = Random.Range (1, 3);
-		blocks1.Insert (0, "0_big_" + (rand == 1? "a" : "b")); blocks2.Insert (0, "0_big_"  + (rand == 2? "a" : "b"));
-		rand = Random.Range (1, 3);
 		blocks1.Insert (0, "1_big_"  + (rand == 1? "a" : "b")); blocks2.Insert (0, "1_big_" + (rand == 2? "a" : "b"));
 		rand = Random.Range (1, 3);
 		blocks1.Insert (0, "1_medium_" + (rand == 1? "a" : "b")); blocks2.Insert (0, "1_medium_"  + (rand == 2? "a" : "b")); 
@@ -377,6 +460,10 @@ public class dataSaver : MonoBehaviour {
 		rand = Random.Range (1, 3);
 		blocks1.Insert (0, "baseline_big_" + (rand == 1? "a" : "b")); blocks2.Insert(0, "baseline_big_" + (rand == 2? "a" : "b"));
 
+		rand = Random.Range (1, 3);
+		blocks1.Insert (0, "0_no_" + (rand == 1? "a" : "b")); blocks2.Insert(0, "0_no_" + (rand == 2? "a" : "b"));
+
+
 		blocks1 = dataSaver.shuffle (blocks1);
 		blocks2 = dataSaver.shuffle (blocks2);
 
@@ -385,10 +472,13 @@ public class dataSaver : MonoBehaviour {
 		blocksOrder = new List<Block> ();
 		Block blockBaseline = new Block ();
 		int i = 0;
+
 		for (i = 0; i < blocks1.Count; i++) {
+			
 			string[] parts = blocks1 [i].Split ('_');
 
 			Block block = new Block ();
+			block.fileName = blocks1 [i];
 			block.ringSize = parts [1];
 			block.blockType = parts [2];
 			if (parts [0] == "baseline") {
@@ -407,6 +497,11 @@ public class dataSaver : MonoBehaviour {
 			block.isCalibration = false;
 			block.withNback = true;
 
+			string path = Application.dataPath + "/orders/order" + order + "/" + block.nLevel + "_"
+				+ block.ringSize + "_" + block.blockType + ".txt";
+			StreamWriter stream = File.CreateText (path);
+
+
 			if (block.nLevel == "0") {
 				if (block.blockType == "a") {
 					block.targetLetter = "1";
@@ -420,14 +515,36 @@ public class dataSaver : MonoBehaviour {
 			block.generateAversiveSound ();
 			block.generateBips ();
 			allBlocks.Insert (i, block);
+
+			stream.WriteLine (getStringFromArray(block.letters));
+			stream.WriteLine (getStringFromArray(block.colors));
+			stream.WriteLine (getStringFromArray(block.sounds));
+			stream.Close ();
 		}
-		allBlocks.Insert (0, blockBaseline);
+		string path2 = Application.dataPath + "/orders/order" + order + "/blockOrder.txt";
+		StreamWriter stream2 = File.CreateText (path2);
+		stream2.WriteLine (getStringFromArray(blocks1));
+		stream2.Close ();
 		return allBlocks;
 	}
 
+	StringBuilder getStringFromArray(List<string> arrayInputList) {
+		string[] arrayInput = arrayInputList.ToArray ();
+		string delimiter = ",";
+		int length = arrayInput.Length;
+		StringBuilder stringOutput = new StringBuilder ();
+
+		stringOutput.AppendLine (string.Join (delimiter, arrayInput));
+
+		return stringOutput;
+	}
+
 	// Use this for initialization
-	public void Start () {	
-		this.showSuccessRate = false;
+	public void Start () {
+		fixationsArray = new List<int>(new int[]{3,3,3,3,3,3,6,6,6,6,6,6,9,9,9,9});
+		this.fixationsArray = dataSaver.shuffleInt (this.fixationsArray);
+		this.fixationsArray.Insert (0, 9);
+		this.fixationsArray.Insert (dataSaver.halfConditionIndex + 1, 9);
 		this.LSLScript = gameObject.AddComponent<LSL_BCI_Input>(); // To interface with online BCI
 
 		this.parallelScript = gameObject.AddComponent<parallelPort>(); // To interface with online BCI

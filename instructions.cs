@@ -9,12 +9,14 @@ public class instructions : MonoBehaviour {
 	public Sprite zero_a;
 	public Sprite zero_b;
 	public Sprite no_n;
+	public Sprite calibration;
 	public Sprite fixation;
 	private float startTimeInstructions = -1;
 	private float timeLimitInstructions = 1;
 	private float startTimeFixation = -1;
 	private float timeLimitFixation = 1;
 	private LSL_BCI_Input lslScript;
+	private dataSaver dataSaver;
 
 	void Update () {
 		float currrentTime = Time.time;
@@ -32,6 +34,7 @@ public class instructions : MonoBehaviour {
 	}
 
 	void showFixation() {
+		this.timeLimitFixation = this.dataSaver.fixationsArray [this.dataSaver.currentBlockIndex];
 		startTimeInstructions = -1;
 		startTimeFixation = Time.time;
 		Image image = GetComponent<Image> ();
@@ -51,6 +54,13 @@ public class instructions : MonoBehaviour {
 			//renderer.blocksRaycasts = false;
 			loadCanvas.SetActive(false);
 		}
+		GameObject stressCanvas =  GameObject.Find ("Canvas_stress");
+		if (stressCanvas) {
+			//renderer = stressCanvas.GetComponent<CanvasGroup> ();
+			//renderer.alpha = 0f;
+			//renderer.blocksRaycasts = false;
+			stressCanvas.SetActive(false);
+		}
 		Image image = GetComponent<Image> ();
 
 		startTimeInstructions = Time.time;
@@ -58,16 +68,19 @@ public class instructions : MonoBehaviour {
 
 		GameObject dataSaverObject =  GameObject.Find("dataSaver");
 		if (dataSaverObject) {
-			dataSaver dataSaver = dataSaverObject.GetComponent<dataSaver> ();
-			this.lslScript = dataSaver.getLslScript();
+			this.dataSaver = dataSaverObject.GetComponent<dataSaver> ();
+			this.lslScript = this.dataSaver.getLslScript();
 
 			this.lslScript.setMarker ("startInstructions");
-			int currentBlockIndex = dataSaver.currentBlockIndex;
+			int currentBlockIndex = this.dataSaver.currentBlockIndex;
 
-			if (dataSaver.getWithNBack() == false) {
+			if (this.dataSaver.getIsCalibration () == true) {
+				image.sprite = this.calibration;
+			}
+			else if (this.dataSaver.getWithNBack() == false) {
 				image.sprite = this.no_n;
 			} else {
-				int n = dataSaver.getN();
+				int n = this.dataSaver.getN();
 				if (n == 1) {
 					image.sprite = this.one;
 				} else if (n == 2) {
@@ -75,7 +88,7 @@ public class instructions : MonoBehaviour {
 				} else if (n == 3) {
 					image.sprite = this.three;
 				} else {
-					string type = dataSaver.getType ();
+					string type = this.dataSaver.getType ();
 					if (type == "a") {
 						image.sprite = this.zero_a;
 					} else {

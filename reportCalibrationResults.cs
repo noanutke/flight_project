@@ -4,17 +4,13 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
 public class reportCalibrationResults : MonoBehaviour {
-	public GameObject button;
-	public Button buttonComponent;
+
 	// Use this for initialization
 	void Start () {
 		GameObject loadCanvas =  GameObject.Find ("Canvas_load");
 		if (loadCanvas) {
 			loadCanvas.SetActive(false);
 		}
-		button = GameObject.Find ("ButtonFinish");
-		buttonComponent = button.GetComponent<Button> ();
-		buttonComponent.onClick.AddListener (onDone);
 
 		GameObject emptyObject =  GameObject.Find("dataSaver");
 		dataSaver dataSaver = emptyObject.GetComponent<dataSaver> ();
@@ -28,13 +24,13 @@ public class reportCalibrationResults : MonoBehaviour {
 		speedValueText.text = speed.ToString ();
 
 	}
-		
-	void onDone() {
-		SceneManager.LoadScene ("N_back_input");
-	}
+
 
 	// Update is called once per frame
 	void Update () {
-
+		if(Input.GetKeyDown(KeyCode.Space)){
+			SceneManager.LoadScene ("N_back_input");
+			return;
+		}
 	}
 }
