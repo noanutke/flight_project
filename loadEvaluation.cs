@@ -70,7 +70,7 @@ public class loadEvaluation : MonoBehaviour {
 	private int itemsNumber;
 	private Slider[] items;
 	private float startTime = 0;
-	private float timeLimit = 1;
+	private float timeLimit = 21;
 	private static string createdFileName = "";
 	private static int nextDataIndexToSave = 0;
 	private LSL_BCI_Input lslScript;
@@ -263,7 +263,7 @@ public class loadEvaluation : MonoBehaviour {
 		string speed = "";
 
 		stressText = dataSaverScript.condition;
-		nlevelText = dataSaverScript.getLastN ().ToString ();
+		nlevelText = dataSaverScript.getLastN ();
 		ringSizeText = dataSaverScript.getLastRingSize();
 		stroopCondition = dataSaverScript.getStroopCondition ().ToString ();
 		isPractice = dataSaverScript.getIsLastPractice().ToString ();
@@ -294,7 +294,7 @@ public class loadEvaluation : MonoBehaviour {
 
 		this.writeValuesToFile ();
 		this.lslScript.setMarker ("endLoadEvaluation");
-
+		float currrentTime = Time.time;
 		if (dataSaverScript.currentBlockIndex-1 == dataSaver.halfConditionIndex) {
 			SceneManager.LoadScene ("N_back_input");
 

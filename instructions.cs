@@ -12,7 +12,7 @@ public class instructions : MonoBehaviour {
 	public Sprite calibration;
 	public Sprite fixation;
 	private float startTimeInstructions = -1;
-	private float timeLimitInstructions = 1;
+	private float timeLimitInstructions = 9;
 	private float startTimeFixation = -1;
 	private float timeLimitFixation = 1;
 	private LSL_BCI_Input lslScript;
@@ -22,6 +22,9 @@ public class instructions : MonoBehaviour {
 		float currrentTime = Time.time;
 		if (startTimeFixation > -1 && currrentTime - this.startTimeFixation > this.timeLimitFixation) {
 			this.lslScript.setMarker ("endFixation");
+			float startTime = Time.time;
+			print("endFixation");
+			print(startTime);
 			SceneManager.LoadScene ("FlightSimTest");
 			return;
 		}
@@ -80,12 +83,12 @@ public class instructions : MonoBehaviour {
 			else if (this.dataSaver.getWithNBack() == false) {
 				image.sprite = this.no_n;
 			} else {
-				int n = this.dataSaver.getN();
-				if (n == 1) {
+				string n = this.dataSaver.getN();
+				if (n == "1") {
 					image.sprite = this.one;
-				} else if (n == 2) {
+				} else if (n == "2") {
 					image.sprite = this.two;
-				} else if (n == 3) {
+				} else if (n == "3") {
 					image.sprite = this.three;
 				} else {
 					string type = this.dataSaver.getType ();

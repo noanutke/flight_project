@@ -38,7 +38,7 @@ public class stressEvaluation : MonoBehaviour {
 	private int itemsNumber;
 	private Slider[] items;
 	private float startTime = 0;
-	private float timeLimit = 1;
+	private float timeLimit = 9;
 	private int updatesNumber = 0;
 	private static string createdFileName = "";
 	private static int nextDataIndexToSave = 0;
@@ -152,7 +152,7 @@ public class stressEvaluation : MonoBehaviour {
 		string isBaseline = ""; 
 
 		stressText = dataSaverScript.condition;
-		levelText = dataSaverScript.getLastN ().ToString ();
+		levelText = dataSaverScript.getLastN ();
 		ringSizeText = dataSaverScript.getLastRingSize();
 		stroopCondition = dataSaverScript.getStroopCondition ().ToString ();
 		isPractice = dataSaverScript.getIsLastPractice().ToString ();
@@ -170,10 +170,10 @@ public class stressEvaluation : MonoBehaviour {
 		isPracticeList.Add (isPractice);
 		isBaselineList.Add (isBaseline);
 		speeds.Add (speed);
-
+		float currrentTime = Time.time;
 		this.writeValuesToFile ();
 		this.lslScript.setMarker ("endStressEvaluation");
-		if (dataSaverScript.currentBlockIndex == 0) {
+		if (dataSaverScript.currentBlockIndex == 0 || dataSaverScript.currentBlockIndex == dataSaver.halfConditionIndex + 2) {
 			SceneManager.LoadScene ("Instructions");
 		} else {
 			SceneManager.LoadScene ("load_evaluation");

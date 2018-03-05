@@ -64,6 +64,8 @@ var failuresInRow = 0;
 var flightFailures = 0;
 var flightSuccess = 0;
 var nBackFailures = 0;
+var nBackHits = 0;
+var nBackFA = 0;
 var prefab1: Transform;
 var prefab2: Transform;
 var nBackTrialsAmount = 12;
@@ -154,19 +156,15 @@ function initilaizeCurrentBlockProperties() {
 	this.colors = dataSaverScript.getColors();
 	this.sounds = dataSaverScript.getAlarms();
 
-
-	if (dataSaverScript.getIsBaseline()) {
-		return;
-	}
 	withStress = dataSaverScript.condition == "stress"? true: false;
-	n = dataSaverScript.getN().ToString();
+	n = dataSaverScript.getN();
 	stroopCondition = dataSaverScript.getStroopCondition();
 	blockOrdinal = dataSaverScript.getType();
 	targetLetter = dataSaverScript.getTargetLetter();
 	withNback = dataSaverScript.getWithNBack();
 	ringSize = dataSaverScript.getRingSize();
 	moveSpeed = dataSaverScript.moveSpeed;
-	if (n == "0" || withNback == false) {
+	if (dataSaverScript.getIsBaseline() || withNback == false) {
 		withStress = false;
 	}
 
@@ -213,6 +211,14 @@ function setRingSuccess() {
 		ringsCountForCalibration += 1;
 		updateSpeedIfNeeded();
 	}
+}
+
+function setStartMarker() {
+	lslBCIInputScript.setMarker ("RunStart_Condition_" + dataSaverScript.condition + "_nLevel_" + n + "_ringSize_" + ringSize + 
+	"_blockOrdinal_" + dataSaverScript.getType() + "_stroopCondition_" + dataSaverScript.getStroopCondition() + 
+	"_isPractice_" + isPractice + "_blockNumber_"
+	+ dataSaverScript.currentBlockIndex + "_speed_" + dataSaverScript.moveSpeed + "_subjectNumber_" + dataSaverScript.subjectNumber + 
+	"_isBaseline_"  + dataSaverScript.getIsBaseline() + "_order_" + dataSaverScript.blockOrderNumber);
 }
 
 function updateSpeedIfNeeded() {
@@ -272,8 +278,12 @@ function EndLevel()
 
 	var nBackSuccessRate: float = 0.0;
 	if (withNback == true) {
-		var nBackSuccessAmount: float = nBackTrialsAmount - nBackFailures + 0.0f;
-		nBackSuccessRate = nBackSuccessAmount / nBackTrialsAmount * 100;
+		var nBackHitsFloat: float = nBackHits + 0.0f;
+		var nBackFAFloat: float =  nBackHits + 0.0f;
+		nBackSuccessRate = ((nBackHitsFloat / 4 ) - (nBackFAFloat / 36 ))* 100;
+		if (nBackSuccessRate < 0) {
+			nBackSuccessRate = 0;
+		}
 	}
 	dataSaverScript.updateSuccessRate(flightSuccessRate, nBackSuccessRate);
 
@@ -288,7 +298,12 @@ function EndLevel()
 	else if (dataSaverScript.getIsLastPractice()) {
 			SceneManagement.SceneManager.LoadScene ("successRates");
 	}
+	else if (dataSaverScript.condition == "stress" && dataSaverScript.getIsBaseline() == false) {
+		dataSaverScript.updateBlockIndex();
+		SceneManagement.SceneManager.LoadScene ("histogram");
+	}
 	else if (dataSaverScript.currentBlockIndex == dataSaverScript.halfConditionIndex ||
+	dataSaverScript.currentBlockIndex == dataSaverScript.halfConditionIndex + 1 ||
 	dataSaverScript.currentBlockIndex == dataSaverScript.fullConditionIndex){
 		dataSaverScript.updateBlockIndex();
 		SceneManagement.SceneManager.LoadScene ("stress_evaluation");
@@ -301,6 +316,9 @@ function EndLevel()
 }
 
 function readNextLetter() {
+	var startTime = Time.time;
+	print('readLetter');
+	print(startTime);
 	targetPresentedLastTrial = targetPresented;
 	nbackButtonPressedForLastTrial = nbackButtonPressedForTrial;
 
@@ -406,11 +424,13 @@ function nbackButtonPressed() {
 	var rt = currentTime - lastLetterTime - 0.5;
 	if (isTarget() ) {		
 			setNbackSuccess();
+			nBackHits += 1;
 			lslBCIInputScript.setMarker ("nBackHIT" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
 		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
 	}
 	else {
 		setNbackFailure();
+		nBackFA += 1;
 		lslBCIInputScript.setMarker ("nBackFA" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize +
 		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
 	}
@@ -437,7 +457,7 @@ function isTarget() {
 
 function setPerformanceLevel() {
 
-	if (withStress == false ) {
+	if (withStress == false || dataSaverScript.getIsBaseline()) {
 		return;
 	}
 	var renderers: Component[];

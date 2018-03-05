@@ -154,10 +154,7 @@ public class start_nback : MonoBehaviour {
 		GameObject emptyObject = GameObject.Find ("dataSaver");
 		dataSaver dataSaver = emptyObject.GetComponent<dataSaver> ();
 		if (dataSaver) {
-			if (dataSaver.currentBlockIndex-1 == dataSaver.halfConditionIndex) {
-				SceneManager.LoadScene ("Instructions");
-				return;
-			}
+
 			string subjectNumber = this.subjectNumberInput.text;	
 			int speed = this.initSpeed ();
 			string condition = this.initStressCondition ();

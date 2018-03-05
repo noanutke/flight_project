@@ -309,6 +309,9 @@ function innerCreationOfArrowsArray(verticalMajorityOptions, horizontalMajorityO
 //-----------------------//
 function Start() 
 {	
+	startTime = Time.time;
+	print('startBlock4');
+	print(startTime);
 	firstRingPassed = false;
 	var ob = GameObject.Find("dataSaver");
 	dataSaverScript = ob.GetComponent(dataSaver) as dataSaver; 
@@ -341,7 +344,7 @@ function Start()
 	this.enabled = false;
 
 	 // to get constants
-	if (nLevel != 0) {
+	if (nLevel != "0") {
 		gameObject.AddComponent(Constants);
 		flightScript = gameObject.AddComponent(ControlFlight); // to enable flight controls
 	}
@@ -379,7 +382,7 @@ function Start()
 	}
 	
 	ringSize = dataSaverScript.getRingSize();
-	if (nLevel != 0) {
+	if (nLevel != "0") {
 		 //------- UPPER RIGHT RING LOCATIONS 	
 		// Read in ring locations from text file
 	 	var upperRightRingInfo = ReadInPoints(routeFilename, 50.00, 50.00);
@@ -476,16 +479,13 @@ function Start()
 	// Try to pause to allow to start recording!
 	crossScript.Show();
 	yield WaitForSeconds(3);
-
+	controlNbackScript.setStartMarker ();
 	currentBlockNumber = dataSaverScript.currentBlockIndex;
 	// Changed, FJ, 20160403 - Send start marker with condition
-	lslBCIInputScript.setMarker ("RunStart_Condition_" + condition + "_nLevel_" + nLevel + "_ringSize_" + ringSize + 
-		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition + "_isPractice_" + isPractice + "_blockNumber_"
-		+ currentBlockNumber + "_speed_" + moveSpeed + "_subjectNumber_" + dataSaverScript.subjectNumber + 
-		"_isBaseline_"  + dataSaverScript.getIsBaseline());
+
 	// --------------------------------------------------------
 	parallelPortScript.OutputToParallel(1);
-	if (nLevel == 0) {
+	if (nLevel == "0") {
 		crossScript.Show();
 		return;
 	}
@@ -494,6 +494,8 @@ function Start()
 	}
 	flightScript.setSpeed(moveSpeed);
 	flightScript.StartFlight(controlNbackScript);
+
+
 	SwitchArrowIfNeeded(iNextRing);
 	changeCrossPositionIfNeeded(nextUpperLeftRingBounds.center, nextLowerLeftRingBounds.center,
  		nextUpperRightRingBounds.center, nextLowerRightRingBounds.center);
@@ -512,7 +514,7 @@ function Start()
 }
 
 function Update() {
-	if (nLevel == 0) {
+	if (nLevel == "0") {
 		return;
 	}
 
@@ -566,6 +568,10 @@ function Update() {
 		 nextUpperRightRingBounds.center, nextLowerRightRingBounds.center);
 
 		firstRingPassed = true;
+		endTime = Time.time;
+		print('EndBlock4');
+		print(endTime);
+		startTrialTime = Time.time;
 	}
 }
 
@@ -931,7 +937,7 @@ function OnGUI () {
 //-----------------------//
 function LateUpdate () {
 
-	if (nLevel == 0) {
+	if (nLevel == "0") {
 		
 		return;
 	}

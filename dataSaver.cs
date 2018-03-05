@@ -12,7 +12,7 @@ using System.Linq;
 public class dataSaver : MonoBehaviour {
 	public List<int> fixationsArray = new List<int>(new int[]{3,3,3,3,3,3,6,6,6,6,6,6,9,9,9,9});
 	public bool withEyeTracker = false;
-
+	public string blockOrderNumber = "";
 	public int currentBlockIndex = -1;
 	public List<Dictionary<string, string>> blocksArray  = new List<Dictionary<string, string>>();
 	public string condition;
@@ -218,7 +218,7 @@ public class dataSaver : MonoBehaviour {
 				int i = 0;
 				int indexInSoundsTypes = 0;
 				for (i = 0; i < lettersAmount; i++) {
-					if (this.colors [i] == "red") {
+					if (this.colors [i] == "red" && i > 0 && this.colors [i-1] == "red") {
 						if (redIndex == randomIndex) {
 							this.sounds.Insert (i, soundsTypes[indexInSoundsTypes]);
 							indexInSoundsTypes++;
@@ -344,6 +344,7 @@ public class dataSaver : MonoBehaviour {
 	}
 
 	public bool initCondition(string stressCondition, int speed, string subjectNumber, string order) {
+		this.blockOrderNumber = order;
 		this.blocksCount = 12;
 		this.currentBlockIndex = 0;
 		this.subjectNumber = subjectNumber;
@@ -408,7 +409,7 @@ public class dataSaver : MonoBehaviour {
 				block.isPractice = false;
 				block.isCalibration = false;
 				block.withNback = false;
-				block.nLevel = "1";
+				block.nLevel = "";
 				allBlocks.Insert (allBlocks.Count, block);
 
 				continue;
@@ -421,6 +422,7 @@ public class dataSaver : MonoBehaviour {
 
 
 			if (block.nLevel == "0") {
+				block.isBaseline = true;
 				if (block.blockType == "a") {
 					block.targetLetter = "1";
 				} else {
@@ -541,10 +543,12 @@ public class dataSaver : MonoBehaviour {
 
 	// Use this for initialization
 	public void Start () {
-		fixationsArray = new List<int>(new int[]{3,3,3,3,3,3,6,6,6,6,6,6,9,9,9,9});
-		this.fixationsArray = dataSaver.shuffleInt (this.fixationsArray);
-		this.fixationsArray.Insert (0, 9);
-		this.fixationsArray.Insert (dataSaver.halfConditionIndex + 1, 9);
+		List<int> fixationsArray1 = new List<int>(new int[]{3,3,3,6,6,6,9,9,9});
+		List<int> fixationsArray2= new List<int>(new int[] {3,3,3,6,6,6,9,9,9});
+		fixationsArray1 = dataSaver.shuffleInt (fixationsArray1);
+		fixationsArray2 = dataSaver.shuffleInt (fixationsArray2);
+		this.fixationsArray = new List<int>(fixationsArray1.Concat (fixationsArray2));
+
 		this.LSLScript = gameObject.AddComponent<LSL_BCI_Input>(); // To interface with online BCI
 
 		this.parallelScript = gameObject.AddComponent<parallelPort>(); // To interface with online BCI
@@ -616,12 +620,12 @@ public class dataSaver : MonoBehaviour {
 		return this.blocksOrder [this.currentBlockIndex == 0? 0 : this.currentBlockIndex-1].ringSize;
 	}
 
-	public int getN() {
-		return int.Parse(this.blocksOrder [this.currentBlockIndex].nLevel);
+	public string getN() {
+		return this.blocksOrder [this.currentBlockIndex].nLevel;
 	}
 
-	public int getLastN() {
-		return int.Parse(this.blocksOrder [this.currentBlockIndex == 0? 0 : this.currentBlockIndex-1].nLevel);
+	public string getLastN() {
+		return this.blocksOrder [this.currentBlockIndex == 0? 0 : this.currentBlockIndex-1].nLevel;
 	}
 
 	public string getType() {
