@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using System.IO;
 using System.Text;
+using System;
 
 
 
@@ -28,6 +29,7 @@ public class stressEvaluation : MonoBehaviour {
 	public static List<string> isPracticeList = new List<string>();
 	public static List<string> isBaselineList = new List<string>();
 	public static List<string> speeds = new List<string>();
+	private bool inSecondSession = false;
 	private int stressValue = 50;
 	private int unpleasentValue = 50;
 	private float stressValueTime = 0.0f;
@@ -95,7 +97,8 @@ public class stressEvaluation : MonoBehaviour {
 				}
 			}
 		}
-		this.lslScript.setMarker ("startStressEvaluation");
+
+		this.lslScript.setMarker ("sEval_stress");
 		this.startTime = Time.time;
 	}
 
@@ -172,8 +175,9 @@ public class stressEvaluation : MonoBehaviour {
 		speeds.Add (speed);
 		float currrentTime = Time.time;
 		this.writeValuesToFile ();
-		this.lslScript.setMarker ("endStressEvaluation");
-		if (dataSaverScript.currentBlockIndex == 0 || dataSaverScript.currentBlockIndex == dataSaver.halfConditionIndex + 2) {
+		this.lslScript.setMarker ("eEval_stress");
+		if (dataSaverScript.currentBlockIndex == 0 || (
+			dataSaverScript.currentBlockIndex == dataSaver.halfConditionIndex + 1 && dataSaverScript.inSecondSession == true)) {
 			SceneManager.LoadScene ("Instructions");
 		} else {
 			SceneManager.LoadScene ("load_evaluation");

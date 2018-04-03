@@ -21,7 +21,7 @@ public class instructions : MonoBehaviour {
 	void Update () {
 		float currrentTime = Time.time;
 		if (startTimeFixation > -1 && currrentTime - this.startTimeFixation > this.timeLimitFixation) {
-			this.lslScript.setMarker ("endFixation");
+			this.lslScript.setMarker ("eFixation");
 			float startTime = Time.time;
 			print("endFixation");
 			print(startTime);
@@ -30,8 +30,8 @@ public class instructions : MonoBehaviour {
 		}
 		if (startTimeInstructions > -1 && currrentTime - this.startTimeInstructions > this.timeLimitInstructions) {
 			startTimeFixation = Time.time;
-			this.lslScript.setMarker ("endInstructions");
-			this.lslScript.setMarker ("startFixation");
+			this.lslScript.setMarker ("eInstructions");
+			this.lslScript.setMarker ("sFixation");
 			this.showFixation ();
 		}
 	}
@@ -74,7 +74,7 @@ public class instructions : MonoBehaviour {
 			this.dataSaver = dataSaverObject.GetComponent<dataSaver> ();
 			this.lslScript = this.dataSaver.getLslScript();
 
-			this.lslScript.setMarker ("startInstructions");
+			this.lslScript.setMarker ("sInstructions");
 			int currentBlockIndex = this.dataSaver.currentBlockIndex;
 
 			if (this.dataSaver.getIsCalibration () == true) {
@@ -92,7 +92,7 @@ public class instructions : MonoBehaviour {
 					image.sprite = this.three;
 				} else {
 					string type = this.dataSaver.getType ();
-					if (type == "a") {
+					if (type == "a" || type == "c") {
 						image.sprite = this.zero_a;
 					} else {
 						image.sprite = this.zero_b;

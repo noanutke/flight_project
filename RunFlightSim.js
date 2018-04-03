@@ -483,8 +483,6 @@ function Start()
 	currentBlockNumber = dataSaverScript.currentBlockIndex;
 	// Changed, FJ, 20160403 - Send start marker with condition
 
-	// --------------------------------------------------------
-	parallelPortScript.OutputToParallel(1);
 	if (nLevel == "0") {
 		crossScript.Show();
 		return;
@@ -582,11 +580,10 @@ function checkIfRingFailedAndSendTrigggers(ringBounds) {
 
 		//lslBCIInputScript.setMarker (currentRing + "Fail_Size_" + Mathf.Abs(ringBounds.max.y - ringBounds.min.y));
 		var ringSize = Mathf.Abs(ringBounds.max.y - ringBounds.min.y);
-		lslBCIInputScript.setMarker("RingFailed_Condition_" + condition + "_nLevel_" + nLevel + "_ringSize_" + ringSize + 
-
-		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition + "_isPractice_" + isPractice);	
+		lslBCIInputScript.setMarker("ring_0");	
 
 		controlNbackScript.setRingFailure();
+
 
 		return true;
 	}
@@ -602,58 +599,29 @@ function sendTriggerRingPassed(ringBounds) {
 	if (iNextRing <= ( LowerRightRingArray.length-1 ) )
 	{
 		var ringSize = Mathf.Abs(ringBounds.max.y - ringBounds.min.y);
-		lslBCIInputScript.setMarker("RingPassed_Condition_" + condition + "_nLevel_" + nLevel + "_ringSize_" + ringSize + 
-		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition + "_isPractice_" + isPractice);
+		lslBCIInputScript.setMarker("ring_1");
 
 	}
 }
 
 
-// ADDED, FJ, 2015-05-11
-// Inserts a specific stick movement event depending on the
-// size of the next ring. This is in addition to the regular stick
-// movement event triggered in ControlFlight.
-function sendMarkerWithRingSize ( sMarkerName : String )
-{
-	// Debug.Log ("# DBG: In SendMarkerWithRingSize!!");
-
-	// CHANGED, FJ, 2015-05-11
-	// Annotate the size of the next ring to the marker string passed as argument
-	// and inject the resulting marker into the data stream via the labstreaminglayer framework.
-	//lslBCIInputScript.setMarker ( sMarkerName + "_Size_" + Mathf.Abs(nextUpperRightRingBounds.max.y - nextUpperRightRingBounds.min.y));
-}
 
 function setMarkerForControlFlight ( sMarkerName : String )
 {
 	lslBCIInputScript.setMarker(sMarkerName);
-	// Debug.Log ("# DBG: In SendMarkerWithRingSize!!");
 
-	// CHANGED, FJ, 2015-05-11
-	// Annotate the size of the next ring to the marker string passed as argument
-	// and inject the resulting marker into the data stream via the labstreaminglayer framework.
-	//lslBCIInputScript.setMarker ( sMarkerName + "_Size_" + Mathf.Abs(nextUpperRightRingBounds.max.y - nextUpperRightRingBounds.min.y));
 }
 
 function setMarkerForPitch ( fNewPitch : double )
 {
 	lslBCIInputScript.sendStickMvmtPitch ( fNewPitch );
-	// Debug.Log ("# DBG: In SendMarkerWithRingSize!!");
 
-	// CHANGED, FJ, 2015-05-11
-	// Annotate the size of the next ring to the marker string passed as argument
-	// and inject the resulting marker into the data stream via the labstreaminglayer framework.
-	//lslBCIInputScript.setMarker ( sMarkerName + "_Size_" + Mathf.Abs(nextUpperRightRingBounds.max.y - nextUpperRightRingBounds.min.y));
 }
 
 function setMarkerForYaw ( fNewPitch : double )
 {
 	lslBCIInputScript.sendStickMvmtYaw ( fNewPitch );
-	// Debug.Log ("# DBG: In SendMarkerWithRingSize!!");
 
-	// CHANGED, FJ, 2015-05-11
-	// Annotate the size of the next ring to the marker string passed as argument
-	// and inject the resulting marker into the data stream via the labstreaminglayer framework.
-	//lslBCIInputScript.setMarker ( sMarkerName + "_Size_" + Mathf.Abs(nextUpperRightRingBounds.max.y - nextUpperRightRingBounds.min.y));
 }
 
 function changeCrossPositionIfNeeded(leftUpper, leftLower, rightUpper, rightLower) {
@@ -692,7 +660,7 @@ function SwitchArrowIfNeeded(ringIndex)
 			upArrowDirecionScript.ChangePosition(position);
 			upArrowDirecionScript.Show();
 			downArrowDirecionScript.Hide();
-			lslBCIInputScript.setMarker("up_pointingUp_Arrow");
+			lslBCIInputScript.setMarker("arrow_u_u");
 		}
 	}
 	if (currentArrow[0] == "up_pointingDown")	// show up direction arrow in down position
@@ -703,7 +671,7 @@ function SwitchArrowIfNeeded(ringIndex)
 			downArrowDirecionScript.ChangePosition(position);
 			downArrowDirecionScript.Show();
 			upArrowDirecionScript.Hide();
-			lslBCIInputScript.setMarker("up_pointingDown");
+			lslBCIInputScript.setMarker("arrow_u_d");
 		}
 	}
 	if (currentArrow[0] == "down_pointingUp")	// show down direction arrow in up position
@@ -714,7 +682,7 @@ function SwitchArrowIfNeeded(ringIndex)
 			upArrowDirecionScript.ChangePosition(position);
 			upArrowDirecionScript.Show();
 			downArrowDirecionScript.Hide();
-			lslBCIInputScript.setMarker("down_pointingUp");
+			lslBCIInputScript.setMarker("arrow_d_u");
 		}
 	}
 	if (currentArrow[0] == "down_pointingDown")	// show down direction arrow in down position
@@ -725,7 +693,7 @@ function SwitchArrowIfNeeded(ringIndex)
 			downArrowDirecionScript.ChangePosition(position);
 			upArrowDirecionScript.Hide();
 			downArrowDirecionScript.Show();
-			lslBCIInputScript.setMarker("down_pointingDown");
+			lslBCIInputScript.setMarker("arrow_d_d");
 		}
 	}
 	if (currentArrow[1] == "left_pointingRight")	// show up direction arrow in up position
@@ -736,7 +704,7 @@ function SwitchArrowIfNeeded(ringIndex)
 			rightArrowDirecionScript.ChangePosition(position);
 			rightArrowDirecionScript.Show();
 			leftArrowDirecionScript.Hide();
-			lslBCIInputScript.setMarker("left_pointingRight");
+			lslBCIInputScript.setMarker("arrow_l_r");
 		}
 	}
 	if (currentArrow[1] == "right_pointingRight")	// show up direction arrow in up position
@@ -747,7 +715,7 @@ function SwitchArrowIfNeeded(ringIndex)
 			rightArrowDirecionScript.ChangePosition(position);
 			rightArrowDirecionScript.Show();
 			leftArrowDirecionScript.Hide();
-			lslBCIInputScript.setMarker("right_pointingRight");
+			lslBCIInputScript.setMarker("arrow_r_r");
 		}
 	}
 	if (currentArrow[1] == "right_pointingLeft")	// show up direction arrow in up position
@@ -758,7 +726,7 @@ function SwitchArrowIfNeeded(ringIndex)
 			leftArrowDirecionScript.ChangePosition(position);
 			leftArrowDirecionScript.Show();
 			rightArrowDirecionScript.Hide();
-			lslBCIInputScript.setMarker("right_pointingLeft");
+			lslBCIInputScript.setMarker("arrow_r_l");
 		}
 	}
 	if (currentArrow[1] == "left_pointingLeft")	// show up direction arrow in up position
@@ -769,7 +737,7 @@ function SwitchArrowIfNeeded(ringIndex)
 			leftArrowDirecionScript.ChangePosition(position);
 			leftArrowDirecionScript.Show();
 			rightArrowDirecionScript.Hide();
-			lslBCIInputScript.setMarker("left_pointingLeft");
+			lslBCIInputScript.setMarker("arrow_l_l");
 		}
 	}
 
@@ -781,8 +749,7 @@ function SwitchArrowIfNeeded(ringIndex)
 function EndLevel() 
 {
 	// Changed, FJ, 20160403 - Send start marker with condition
-	lslBCIInputScript.setMarker ("RunEnd_Condition_" + condition + "_level_" + nLevel + "_ringSize_" + ringSize +
-		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition + "_isPractice_" + isPractice);
+	lslBCIInputScript.setMarker ("RunEnd");
 	// --------------------------------------------------------
 
 	if(UpperRightRingArray && UpperRightRingArray.length > 0) {

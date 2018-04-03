@@ -13,7 +13,10 @@ public static var blockOrdinal = "a";
 public static var targetLetter = "1";
 public static var ringSize = "big";
 public static var stroopCondition = "incong";
+public static var trialsAmountTest = 12;
+public static var trialsAmountBaseline = 6;
 public var isPractice = false;
+public var currentBlockTrialsAmount = 0;
 
 var perf1 = Color32(0,255,0,1);
 var perf2 = Color32(128,255,0,1);
@@ -68,7 +71,7 @@ var nBackHits = 0;
 var nBackFA = 0;
 var prefab1: Transform;
 var prefab2: Transform;
-var nBackTrialsAmount = 12;
+
 var bipAppeared = false;
 
 public static var withStress: boolean;
@@ -136,6 +139,7 @@ function Start () {
 
 
 	initilaizeCurrentBlockProperties();
+
 	var mash: MeshRenderer;
 	var renderers = prefab1.GetComponentsInChildren(MeshRenderer);
 	mash = renderers[0];
@@ -164,14 +168,17 @@ function initilaizeCurrentBlockProperties() {
 	withNback = dataSaverScript.getWithNBack();
 	ringSize = dataSaverScript.getRingSize();
 	moveSpeed = dataSaverScript.moveSpeed;
+	currentBlockTrialsAmount = trialsAmountTest;
 	if (dataSaverScript.getIsBaseline() || withNback == false) {
 		withStress = false;
+		currentBlockTrialsAmount = trialsAmountBaseline;
 	}
 
 
 }
 
 function setRingFailure() {
+
 	if (isUpdating) {
 		return;
 	}
@@ -200,6 +207,7 @@ function setNbackSuccess() {
 }
 
 function setRingSuccess() {
+
 	if (isUpdating) {
 		return;
 	}
@@ -214,11 +222,16 @@ function setRingSuccess() {
 }
 
 function setStartMarker() {
+	//blockIndex = dataSaverScript.currentBlockIndex+1;
+	parallelPortScript.OutputToParallel(dataSaverScript.currentBlockIndex+1);
+
+
 	lslBCIInputScript.setMarker ("RunStart_Condition_" + dataSaverScript.condition + "_nLevel_" + n + "_ringSize_" + ringSize + 
-	"_blockOrdinal_" + dataSaverScript.getType() + "_stroopCondition_" + dataSaverScript.getStroopCondition() + 
+	"_blockOrdinal_" + dataSaverScript.getType() + 
 	"_isPractice_" + isPractice + "_blockNumber_"
 	+ dataSaverScript.currentBlockIndex + "_speed_" + dataSaverScript.moveSpeed + "_subjectNumber_" + dataSaverScript.subjectNumber + 
 	"_isBaseline_"  + dataSaverScript.getIsBaseline() + "_order_" + dataSaverScript.blockOrderNumber);
+
 }
 
 function updateSpeedIfNeeded() {
@@ -273,11 +286,13 @@ function setLSL(lslObject: LSL_BCI_Input) {
 
 function EndLevel() 
 {
+
 	var flightAmount: float = flightSuccess + flightFailures + 0.0f;
 	var flightSuccessRate: float = flightSuccess / flightAmount * 100;
 
 	var nBackSuccessRate: float = 0.0;
 	if (withNback == true) {
+
 		var nBackHitsFloat: float = nBackHits + 0.0f;
 		var nBackFAFloat: float =  nBackHits + 0.0f;
 		nBackSuccessRate = ((nBackHitsFloat / 4 ) - (nBackFAFloat / 36 ))* 100;
@@ -285,13 +300,26 @@ function EndLevel()
 			nBackSuccessRate = 0;
 		}
 	}
+
 	dataSaverScript.updateSuccessRate(flightSuccessRate, nBackSuccessRate);
 
-	// Changed, FJ, 20160403 - Send start marker with condition
-	lslBCIInputScript.setMarker ("RunEnd_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize +
-	"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
+	var order = 0.3*nBackSuccessRate + 0.7*flightSuccessRate;
+	var orderInt = Mathf.Ceil (order / 10);
 
-	parallelPortScript.OutputToParallel(2);
+	orderInt = orderInt - 1;
+	if (order == 0) {
+		orderInt = 0;
+	} 
+	else if (orderInt <= 1) {
+		orderInt = 1;
+	}
+
+	dataSaverScript.buildHistogram(orderInt);
+
+	// Changed, FJ, 20160403 - Send start marker with condition
+	lslBCIInputScript.setMarker ("RunEnd");
+
+	parallelPortScript.OutputToParallel(100);
 	if (dataSaverScript.getIsCalibration() == true) {
 		SceneManagement.SceneManager.LoadScene ("calibrationResults");
 	}
@@ -300,10 +328,9 @@ function EndLevel()
 	}
 	else if (dataSaverScript.condition == "stress" && dataSaverScript.getIsBaseline() == false) {
 		dataSaverScript.updateBlockIndex();
-		SceneManagement.SceneManager.LoadScene ("histogram");
+		SceneManagement.SceneManager.LoadScene ("histogramBuilder");
 	}
 	else if (dataSaverScript.currentBlockIndex == dataSaverScript.halfConditionIndex ||
-	dataSaverScript.currentBlockIndex == dataSaverScript.halfConditionIndex + 1 ||
 	dataSaverScript.currentBlockIndex == dataSaverScript.fullConditionIndex){
 		dataSaverScript.updateBlockIndex();
 		SceneManagement.SceneManager.LoadScene ("stress_evaluation");
@@ -322,18 +349,17 @@ function readNextLetter() {
 	targetPresentedLastTrial = targetPresented;
 	nbackButtonPressedForLastTrial = nbackButtonPressedForTrial;
 
-	if (currentLetter != -1) {
+	if (currentLetter != -1 && withNback != false) {
 		setFailureIfLastTrialMissed();
 	}
 
 	currentLetter += 1;
 
-
-	if (!calibration && currentLetter >= 12) {
+	if (!calibration && currentLetter >= currentBlockTrialsAmount) {
 		EndLevel();
 		return;
 	}
-	if (dataSaverScript.getIsBaseline() || withNback == false) {
+	if (withNback == false) {
 		return;
 	}
 
@@ -345,10 +371,9 @@ function readNextLetter() {
 	tooSlow = false;
 
 	var letter = letters[currentLetter];
-	lslBCIInputScript.setMarker ("Letter_" + letter + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize +
-	"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
-	targetPresented = isTarget();
+	lslBCIInputScript.setMarker ("letter_" + letter);
 
+	targetPresented = isTarget();
 
 	if (letter == "1") {
 		one.Play();
@@ -411,8 +436,10 @@ function initSounds(audioObjects) {
 }
 
 
-function nbackButtonPressed() {
-	lslBCIInputScript.setMarker("nbackButtonPressed");
+function nbackButtonPressed(key) {
+	lslBCIInputScript.setMarker ("key_" + key);
+
+
 	if (withNback == false) {
 		return;
 	}
@@ -425,14 +452,13 @@ function nbackButtonPressed() {
 	if (isTarget() ) {		
 			setNbackSuccess();
 			nBackHits += 1;
-			lslBCIInputScript.setMarker ("nBackHIT" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
-		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
+			lslBCIInputScript.setMarker ("nBack_1_1");
+
 	}
 	else {
 		setNbackFailure();
 		nBackFA += 1;
-		lslBCIInputScript.setMarker ("nBackFA" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize +
-		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
+		lslBCIInputScript.setMarker ("nBack_0_1");
 	}
 }
 
@@ -472,8 +498,8 @@ function setPerformanceLevel() {
 	if (withStress == false) {
 		return;
 	}
-	lslBCIInputScript.setMarker ("RingColor_" + currentColor + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize +
-		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
+	lslBCIInputScript.setMarker ("RingColor_" + currentColor);
+
 
 }
 
@@ -514,21 +540,21 @@ function getPerfLevel() {
 }
 
 function playAlarmInNeeded() {
-	if (currentLetter >= 12) {
+	if (currentLetter >= currentBlockTrialsAmount) {
 		return;
 	}
 	var rand = Random.Range(1, 3);
 	if (sounds[currentLetter] == "alarm") {
-		parallelPortScript.OutputToParallel(3);
+
 		alarm2.Play();
 
-		lslBCIInputScript.setMarker ("Alarm" + "_type_alarm");
+		lslBCIInputScript.setMarker ("aversive" + "_alarm");
 	}
 	else if(sounds[currentLetter] == "scream") {
-		parallelPortScript.OutputToParallel(3);
+
 		alarm.Play();
 
-		lslBCIInputScript.setMarker ("Alarm" + "_type_scream");
+		lslBCIInputScript.setMarker ("aversive" + "_scream");
 	}
 }
 
@@ -536,13 +562,11 @@ function setFailureIfLastTrialMissed() {
 	if (!nbackButtonPressedForLastTrial) {
 		if (targetPresentedLastTrial) {
 			setNbackFailure();
-			lslBCIInputScript.setMarker ("nBackMISS" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
+			lslBCIInputScript.setMarker ("nBack_1_0");
 
-		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
 		}
 		else {
-			lslBCIInputScript.setMarker ("nBackCorrectRejection" + "_Condition_" + getCondition() + "_level_" + n + "_ringSize_" + ringSize + 
-		"_blockOrdinal_" + blockOrdinal + "_stroopCondition_" + stroopCondition);
+			lslBCIInputScript.setMarker ("nBack_0_0");
 		}
 	}
 

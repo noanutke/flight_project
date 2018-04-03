@@ -30,6 +30,7 @@ public class loadEvaluation : MonoBehaviour {
 	private Slider sliderFrustrationComponent;
 	private Slider sliderEffortComponent;
 	private Slider sliderPerformanceComponent;
+	private bool inSecondSession = false;
 	public static List<string> physicalValues  = new List<string>();
 	public static List<string> mentalValues  = new List<string>();
 	public static List<string> temporalValues  = new List<string>();
@@ -201,7 +202,8 @@ public class loadEvaluation : MonoBehaviour {
 				}
 			}
 		}
-		this.lslScript.setMarker ("startLoadEvaluation");
+		this.lslScript.setMarker ("sEval_load");
+
 		this.startTime = Time.time;
 	}
 
@@ -293,9 +295,11 @@ public class loadEvaluation : MonoBehaviour {
 		speeds.Add (speed);
 
 		this.writeValuesToFile ();
-		this.lslScript.setMarker ("endLoadEvaluation");
+		this.lslScript.setMarker ("eEval_load");
+
 		float currrentTime = Time.time;
-		if (dataSaverScript.currentBlockIndex-1 == dataSaver.halfConditionIndex) {
+		if (dataSaverScript.currentBlockIndex-1 == dataSaver.halfConditionIndex && dataSaverScript.inSecondSession == false) {
+			dataSaverScript.inSecondSession = true;
 			SceneManager.LoadScene ("N_back_input");
 
 		} else if (dataSaverScript && dataSaverScript.currentBlockIndex < dataSaverScript.getBlockLength ()) {

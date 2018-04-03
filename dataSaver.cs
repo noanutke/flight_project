@@ -10,8 +10,11 @@ using System.Linq;
 
 
 public class dataSaver : MonoBehaviour {
-	public List<int> fixationsArray = new List<int>(new int[]{3,3,3,3,3,3,6,6,6,6,6,6,9,9,9,9});
+	public int[] histogramColumns = new int[10];
+	public List<int> fixationsArray = new List<int>(new int[]{3,3,3,3,3,6,6,6,6,6,9,9,9,9});
+	public List<int> precentileInHistogram = new List<int> (new int[]{ 2, 2, 2, 2, 3, 3, 3, 3, 3, 4 });
 	public bool withEyeTracker = false;
+	public bool inSecondSession = false;
 	public string blockOrderNumber = "";
 	public int currentBlockIndex = -1;
 	public List<Dictionary<string, string>> blocksArray  = new List<Dictionary<string, string>>();
@@ -24,15 +27,19 @@ public class dataSaver : MonoBehaviour {
 	public LSL_BCI_Input LSLScript;
 	public parallelPort parallelScript;
 	public string subjectNumber;
+	public int columnInHistogram;
 
 	public static int redAmountInBBlocks = 5;
 	public static int redAmountInABlocks = 6;
 	public static int targetAmountRequired = 4;
-	public static int halfConditionIndex = 8;
-	public static int fullConditionIndex = 17;
+	public static int targetAmountRequiredForBaseline = 2;
+	public static int halfConditionIndex = 12;
+	public static int fullConditionIndex = 25;
 
 	public static int ringsAmountForCalibrationPhase = 10;
 	public static int ringsFailuresForCalibrationTarget = 2;
+	public static int trialsAmountTestblocks = 12;
+	public static int trialsAmountBaselineBlocks = 6;
 
 
 	public class Block {
@@ -71,9 +78,10 @@ public class dataSaver : MonoBehaviour {
 			return true;
 		}
 
-		public void generateLetters() 
+		public void generateLetters(int trialsAmount, int targetAmount) 
 		{
-			int lettersAmount = 12;
+			int targetAmountRequired = targetAmount;
+			int lettersAmount = trialsAmount;
 			int index = 0;
 			int n = int.Parse (this.nLevel);
 			bool targetsDemandsSatisfied = false;
@@ -81,7 +89,7 @@ public class dataSaver : MonoBehaviour {
 			while (targetsDemandsSatisfied != true) {
 				index = 0;
 				targetIndices = new List<int> ();
-				while (index < dataSaver.targetAmountRequired) {
+				while (index < targetAmountRequired) {
 					int indexForTarge = Random.Range (n, lettersAmount);
 					if (targetIndices.Exists (x => x == indexForTarge)) {
 						continue;
@@ -106,14 +114,14 @@ public class dataSaver : MonoBehaviour {
 				this.isTragetList = new List<bool> ();
 				this.letters = new List<string> ();
 				while (index < lettersAmount) {
-					if (indexOfTargets < dataSaver.targetAmountRequired && index == targetIndices [indexOfTargets]) {
+					if (indexOfTargets < targetAmountRequired && index == targetIndices [indexOfTargets]) {
 						this.isTragetList.Insert (index, true);
 					} else {
 						this.isTragetList.Insert (index, false);
 					}
 
 					if (this.nLevel == "0") {
-						if (indexOfTargets < dataSaver.targetAmountRequired && index == targetIndices [indexOfTargets]) {
+						if (indexOfTargets < targetAmountRequired && index == targetIndices [indexOfTargets]) {
 							letterInserted = true;
 							this.letters.Insert (index, this.targetLetter);
 							indexOfTargets++;
@@ -122,7 +130,7 @@ public class dataSaver : MonoBehaviour {
 						}
 
 					} else {
-						if (indexOfTargets < dataSaver.targetAmountRequired && index == targetIndices [indexOfTargets]) {
+						if (indexOfTargets < targetAmountRequired && index == targetIndices [indexOfTargets]) {
 							if (index - n >= 0) {
 								letterInserted = true;
 								this.letters.Insert (index, this.letters [index - n]);
@@ -170,7 +178,7 @@ public class dataSaver : MonoBehaviour {
 		public void generateBips() 
 		{
 			this.bips = new List<string> ();
-			int lettersAmount = 12;
+			int lettersAmount = trialsAmountTestblocks;
 			int alarmsAmount = 1;
 			if (this.blockType == "b") {
 				alarmsAmount = 0;
@@ -201,31 +209,38 @@ public class dataSaver : MonoBehaviour {
 
 		}
 
-		public void generateAversiveSound() {
+		public void generateAversiveSound(int trialsAmount) {
 			List<string> soundsTypes = new List<string> (new string[] {"alarm", "alarm", "scream", "scream", "scream"});
 			soundsTypes = dataSaver.shuffle (soundsTypes);
 
 			this.sounds = new List<string> ();
-			int lettersAmount = 12;
+			int lettersAmount = trialsAmount;
 			if (this.blockType == "b") { // we have zero alarms
 				int i=0;
 				for (i = 0; i < lettersAmount; i++) {
 					this.sounds.Insert (0, "no");
 				}
 			} else {
-				int randomIndex = Random.Range (0, dataSaver.redAmountInABlocks);
-				int redIndex = 0;
 				int i = 0;
+				int possibleRedAmount = 0;
+				for (i = 0; i < lettersAmount; i++) {
+					if (this.colors [i] == "red" && i > 0 && this.colors [i - 1] == "red") {
+						possibleRedAmount++;
+					}
+				}
+				int randomIndex = Random.Range (0, possibleRedAmount);
+				int possibleRedIndex = 0;
+				i = 0;
 				int indexInSoundsTypes = 0;
 				for (i = 0; i < lettersAmount; i++) {
 					if (this.colors [i] == "red" && i > 0 && this.colors [i-1] == "red") {
-						if (redIndex == randomIndex) {
+						if (possibleRedIndex == randomIndex) {
 							this.sounds.Insert (i, soundsTypes[indexInSoundsTypes]);
 							indexInSoundsTypes++;
 						} else {
 							this.sounds.Insert (i, "no");
 						}
-						redIndex++;
+						possibleRedIndex++;
 						continue;
 					}
 					this.sounds.Insert (i, "no");
@@ -233,6 +248,8 @@ public class dataSaver : MonoBehaviour {
 
 			}
 		}
+
+
 
 		public void readInputPropertiesForBlock(string order = "1") {
 			string path = Application.dataPath + "/orders/order" + order + "/" + this.fileName + ".txt";
@@ -249,8 +266,8 @@ public class dataSaver : MonoBehaviour {
 
 		}
 
-		public void generateColors() {
-			int lettersAmount = 12;
+		public void generateColors(int trialsAmount) {
+			int lettersAmount = trialsAmount;
 			int targetRedRingsAmount;
 			int numberOfInitialGreenRings = 2;
 			int singleRedCount = 0;
@@ -341,19 +358,7 @@ public class dataSaver : MonoBehaviour {
 			list[n] = value;  
 		}
 		return list;
-	}
-
-	public bool initCondition(string stressCondition, int speed, string subjectNumber, string order) {
-		this.blockOrderNumber = order;
-		this.blocksCount = 12;
-		this.currentBlockIndex = 0;
-		this.subjectNumber = subjectNumber;
-		this.condition = stressCondition;
-		this.moveSpeed = speed;
-		//this.blocksOrder = this.initBlocksOrder (order);
-		this.blocksOrder = this.getBlocksFromFile (order);
-		return true;
-	}
+	}	
 
 	public bool initBlock(string stressCondition, int speed, string subjectNumber, string nLevel, string ringSize, bool withNBack,
 		bool isPractice, bool isCalibration, int ringsFailuresForCalibrationTarget) {
@@ -371,20 +376,46 @@ public class dataSaver : MonoBehaviour {
 		block.isCalibration = isCalibration;
 		block.withNback = withNBack;
 
-		if (block.nLevel == "0") {
-			if (block.blockType == "a") {
-				block.targetLetter = "1";
-			} else {
-				block.targetLetter = "2";
-			}
-		}
 
-		block.generateLetters ();
-		block.generateColors ();
-		block.generateAversiveSound ();
-		block.generateBips ();
+		block.generateLetters (dataSaver.trialsAmountTestblocks, dataSaver.targetAmountRequired);
+		block.generateColors (dataSaver.trialsAmountTestblocks);
+		block.generateAversiveSound (dataSaver.trialsAmountTestblocks);
+
 		this.blocksOrder = new List<Block> ();
 		this.blocksOrder.Insert (0, block);
+		return true;
+	}
+
+
+
+	public bool initCondition(string stressCondition, int speed, string subjectNumber, string order) {
+		this.precentileInHistogram = dataSaver.shuffleInt (this.precentileInHistogram);
+		this.blockOrderNumber = order;
+
+		this.currentBlockIndex = 0;
+		this.subjectNumber = subjectNumber;
+		this.condition = stressCondition;
+		this.moveSpeed = speed;
+		//this.blocksOrder = this.initBlocksOrder (order);
+		this.blocksOrder = this.getBlocksFromFile (order);
+		List<int> easyBlocks = new List<int>();
+		int blockIndex = 0;
+		foreach (Block block in this.blocksOrder) {
+			if (block.nLevel == "1") {
+				easyBlocks.Insert (0, blockIndex);
+			}
+			if (block.isBaseline == true) {
+				this.precentileInHistogram.Insert (blockIndex, 0);
+			}
+			blockIndex++;
+		}
+		easyBlocks = dataSaver.shuffleInt (easyBlocks);
+		foreach (int blockNumber in easyBlocks) {
+			if (this.precentileInHistogram[blockNumber] != 4) {
+				this.precentileInHistogram [blockNumber] = 6;
+				break;
+			}
+		}
 		return true;
 	}
 
@@ -423,7 +454,7 @@ public class dataSaver : MonoBehaviour {
 
 			if (block.nLevel == "0") {
 				block.isBaseline = true;
-				if (block.blockType == "a") {
+				if (block.blockType == "a" || block.blockType == "c") {
 					block.targetLetter = "1";
 				} else {
 					block.targetLetter = "2";
@@ -438,49 +469,71 @@ public class dataSaver : MonoBehaviour {
 	}
 
 
-
 	public List<Block> initBlocksOrder(string order) {
 		List<Block> allBlocks = new List<Block> ();
-		List<string> blocks1 = new List<string> ();
-		List<string> blocks2 = new List<string> ();
+		List<string> testBlocks1 = new List<string> ();
+		List<string> baselineBlocks1_start = new List<string> ();
+		List<string> baselineBlocks1_end = new List<string> ();
+		List<string> testBlocks2 = new List<string> ();
+		List<string> baselineBlocks2_start = new List<string> ();
+		List<string> baselineBlocks2_end = new List<string> ();
+		List<string> allBlocksOrder = new List<string> ();
 
 		int rand = Random.Range (1, 3);
-		blocks1.Insert (0, "1_big_"  + (rand == 1? "a" : "b")); blocks2.Insert (0, "1_big_" + (rand == 2? "a" : "b"));
+		testBlocks1.Insert (0, "1_big_"  + (rand == 1? "a" : "b")); testBlocks2.Insert (0, "1_big_" + (rand == 2? "a" : "b"));
 		rand = Random.Range (1, 3);
-		blocks1.Insert (0, "1_medium_" + (rand == 1? "a" : "b")); blocks2.Insert (0, "1_medium_"  + (rand == 2? "a" : "b")); 
+		testBlocks1.Insert (0, "1_medium_" + (rand == 1? "a" : "b")); testBlocks2.Insert (0, "1_medium_"  + (rand == 2? "a" : "b")); 
 		rand = Random.Range (1, 3);
-		blocks1.Insert (0, "2_medium_" + (rand == 1? "a" : "b")); blocks2.Insert (0, "2_medium_" + (rand == 2? "a" : "b"));
+		testBlocks1.Insert (0, "2_medium_" + (rand == 1? "a" : "b")); testBlocks2.Insert (0, "2_medium_" + (rand == 2? "a" : "b"));
 		rand = Random.Range (1, 3);
-		blocks1.Insert (0, "2_small_" + (rand == 1? "a" : "b")); blocks2.Insert (0, "2_small_" + (rand == 2? "a" : "b"));
+		testBlocks1.Insert (0, "2_small_" + (rand == 1? "a" : "b")); testBlocks2.Insert (0, "2_small_" + (rand == 2? "a" : "b"));
 		rand = Random.Range (1, 3);
-		blocks1.Insert (0, "3_small_" + (rand == 1? "a" : "b")); blocks2.Insert(0, "3_small_" + (rand == 2? "a" : "b"));
+		testBlocks1.Insert (0, "3_small_" + (rand == 1? "a" : "b")); testBlocks2.Insert(0, "3_small_" + (rand == 2? "a" : "b"));
 
 		rand = Random.Range (1, 3);
-		blocks1.Insert (0, "baseline_small_" + (rand == 1? "a" : "b")); blocks2.Insert(0, "baseline_small_" + (rand == 2? "a" : "b"));
+		baselineBlocks1_start.Insert (0, "baseline_small_" + (rand == 1? "a" : "b")); baselineBlocks1_end.Insert(0, "baseline_small_" + (rand == 2? "a" : "b"));
 		rand = Random.Range (1, 3);
-		blocks1.Insert (0, "baseline_medium_" + (rand == 1? "a" : "b")); blocks2.Insert(0, "baseline_medium_" + (rand == 2? "a" : "b"));
+		baselineBlocks1_start.Insert (0, "baseline_medium_" + (rand == 1? "a" : "b")); baselineBlocks1_end.Insert(0, "baseline_medium_" + (rand == 2? "a" : "b"));
 		rand = Random.Range (1, 3);
-		blocks1.Insert (0, "baseline_big_" + (rand == 1? "a" : "b")); blocks2.Insert(0, "baseline_big_" + (rand == 2? "a" : "b"));
+		baselineBlocks1_start.Insert (0, "baseline_big_" + (rand == 1? "a" : "b")); baselineBlocks1_end.Insert(0, "baseline_big_" + (rand == 2? "a" : "b"));
 
 		rand = Random.Range (1, 3);
-		blocks1.Insert (0, "0_no_" + (rand == 1? "a" : "b")); blocks2.Insert(0, "0_no_" + (rand == 2? "a" : "b"));
+		baselineBlocks1_start.Insert (0, "0_no_" + (rand == 1? "a" : "b")); baselineBlocks1_end.Insert(0, "0_no_" + (rand == 2? "a" : "b"));
 
+		rand = Random.Range (1, 3);
+		baselineBlocks2_start.Insert (0, "baseline_small_" + (rand == 1? "c" : "d")); baselineBlocks2_end.Insert(0, "baseline_small_" + (rand == 2? "c" : "d"));
+		rand = Random.Range (1, 3);
+		baselineBlocks2_start.Insert (0, "baseline_medium_" + (rand == 1? "c" : "d")); baselineBlocks2_end.Insert(0, "baseline_medium_" + (rand == 2? "c" : "d"));
+		rand = Random.Range (1, 3);
+		baselineBlocks2_start.Insert (0, "baseline_big_" + (rand == 1? "c" : "d")); baselineBlocks2_end.Insert(0, "baseline_big_" + (rand == 2? "c" : "d"));
 
-		blocks1 = dataSaver.shuffle (blocks1);
-		blocks2 = dataSaver.shuffle (blocks2);
+		rand = Random.Range (1, 3);
+		baselineBlocks2_start.Insert (0, "0_no_" + (rand == 1? "c" : "d")); baselineBlocks2_end.Insert(0, "0_no_" + (rand == 2? "c" : "d"));
 
-		blocks1.AddRange (blocks2);
+		testBlocks1 = dataSaver.shuffle (testBlocks1);
+		testBlocks2 = dataSaver.shuffle (testBlocks2);
+		baselineBlocks1_start = dataSaver.shuffle (baselineBlocks1_start);
+		baselineBlocks1_end = dataSaver.shuffle (baselineBlocks1_end);
+		baselineBlocks2_start = dataSaver.shuffle (baselineBlocks2_start);
+		baselineBlocks2_end = dataSaver.shuffle (baselineBlocks2_end);
+
+		allBlocksOrder.AddRange (baselineBlocks1_start);
+		allBlocksOrder.AddRange (testBlocks1);
+		allBlocksOrder.AddRange (baselineBlocks1_end);
+		allBlocksOrder.AddRange (baselineBlocks2_start);
+		allBlocksOrder.AddRange (testBlocks2);
+		allBlocksOrder.AddRange (baselineBlocks2_end);
 
 		blocksOrder = new List<Block> ();
 		Block blockBaseline = new Block ();
 		int i = 0;
 
-		for (i = 0; i < blocks1.Count; i++) {
+		for (i = 0; i < allBlocksOrder.Count; i++) {
 			
-			string[] parts = blocks1 [i].Split ('_');
+			string[] parts = allBlocksOrder [i].Split ('_');
 
 			Block block = new Block ();
-			block.fileName = blocks1 [i];
+			block.fileName = allBlocksOrder [i];
 			block.ringSize = parts [1];
 			block.blockType = parts [2];
 			if (parts [0] == "baseline") {
@@ -505,17 +558,24 @@ public class dataSaver : MonoBehaviour {
 
 
 			if (block.nLevel == "0") {
-				if (block.blockType == "a") {
+				block.isBaseline = true;
+				if (block.blockType == "a" || block.blockType == "c") {
 					block.targetLetter = "1";
 				} else {
 					block.targetLetter = "2";
 				}
 			}
 
-			block.generateLetters ();
-			block.generateColors ();
-			block.generateAversiveSound ();
-			block.generateBips ();
+			int trialsAmount = dataSaver.trialsAmountTestblocks;
+			int targetsAmount = dataSaver.targetAmountRequired;
+			if (block.nLevel == "0" || block.isBaseline) {
+				trialsAmount = dataSaver.trialsAmountBaselineBlocks;
+				targetsAmount = dataSaver.targetAmountRequiredForBaseline;
+			}
+			block.generateLetters (trialsAmount,targetsAmount);
+			block.generateColors (trialsAmount);
+			block.generateAversiveSound (trialsAmount);
+
 			allBlocks.Insert (i, block);
 
 			stream.WriteLine (getStringFromArray(block.letters));
@@ -525,7 +585,7 @@ public class dataSaver : MonoBehaviour {
 		}
 		string path2 = Application.dataPath + "/orders/order" + order + "/blockOrder.txt";
 		StreamWriter stream2 = File.CreateText (path2);
-		stream2.WriteLine (getStringFromArray(blocks1));
+		stream2.WriteLine (getStringFromArray(allBlocksOrder));
 		stream2.Close ();
 		return allBlocks;
 	}
@@ -543,8 +603,8 @@ public class dataSaver : MonoBehaviour {
 
 	// Use this for initialization
 	public void Start () {
-		List<int> fixationsArray1 = new List<int>(new int[]{3,3,3,6,6,6,9,9,9});
-		List<int> fixationsArray2= new List<int>(new int[] {3,3,3,6,6,6,9,9,9});
+		List<int> fixationsArray1 = new List<int>(new int[]{3,3,3,3,6,6,6,6,6,9,9,9,9});
+		List<int> fixationsArray2= new List<int>(new int[] {3,3,3,3,6,6,6,6,6,9,9,9,9});
 		fixationsArray1 = dataSaver.shuffleInt (fixationsArray1);
 		fixationsArray2 = dataSaver.shuffleInt (fixationsArray2);
 		this.fixationsArray = new List<int>(fixationsArray1.Concat (fixationsArray2));
@@ -561,6 +621,8 @@ public class dataSaver : MonoBehaviour {
 	public void updateBlockIndex() {
 		this.currentBlockIndex++;
 	}
+
+
 
 	public string getDifficultLevel(string n, string size) {
 		if (n == "0") {
@@ -691,6 +753,46 @@ public class dataSaver : MonoBehaviour {
 
 	void Awake() {
 		DontDestroyOnLoad(this.gameObject);
+	}
+
+	public void buildHistogram(int column) {
+		this.columnInHistogram = column;
+		this.histogramColumns = new int[]{0,0,0,0,0,0,0,0,0,0};
+
+		int minValue = column >= 2 ? column - 2 : 0;
+		minValue = Random.Range (minValue, column);
+		// choose 3 low scores locations
+		int index = 0;
+		for (index = 0; index <= column - minValue; index++) {
+			this.histogramColumns [minValue+index]++;
+		}
+
+		index = 0;
+		for (index = 0; index < this.precentileInHistogram [this.currentBlockIndex] - (column - minValue + 1); index++) {
+			int currentColumn = Random.Range(minValue, column);
+			if (currentColumn == column && this.histogramColumns [currentColumn] >= 3 && column != 0) {
+				index--;
+				continue;
+			}
+			this.histogramColumns [currentColumn]++;
+		}
+			
+		int maxValue = column <= 5 ? column + 4 : 9;
+
+		maxValue = Random.Range (column + 2, maxValue);
+		// choose 3 low scores locations
+		index = 0;
+		for (index = 0; index < maxValue-column; index++) {
+			this.histogramColumns [maxValue-index]++;
+		}
+
+		index = 0;
+		for (index = 0; index < 10 - this.precentileInHistogram [this.currentBlockIndex] - (maxValue-column)
+			; index++) {
+			int currentColumn = Random.Range(column + 1, maxValue);
+			this.histogramColumns [currentColumn]++;
+		}
+			
 	}
 
 }

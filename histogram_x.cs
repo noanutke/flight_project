@@ -16,26 +16,20 @@ public class histogram_x : MonoBehaviour {
 	IEnumerator ChangePosition() {
 		GameObject emptyObject =  GameObject.Find("dataSaver");
 		dataSaver dataSaver = emptyObject.GetComponent<dataSaver> ();
-		float nBackSuccess = dataSaver.nBackSuccess;
-		float flightSuccess = dataSaver.flightSuccess;
-		float order = (nBackSuccess + flightSuccess) / 2.0f;
-		order = Mathf.Ceil (order / 10);
+		int orderInt = dataSaver.columnInHistogram;
+		LSL_BCI_Input lslScript = dataSaver.getLslScript ();
 
-		order = order - 1;
-		Vector3 vec = new Vector3(0.0f, -3.0f, 0.0f);
-		if (order <= 0) {
-			order = 1;
-		}
+		lslScript.setMarker ("score_" + orderInt.ToString ());
 
-		vec.x = 7.9f - 1.6f * (10f - order);
+		Vector3 vec = new Vector3(0.0f, -2.0f, 0.0f);
+		vec.x = 5.3f - 1.08f * (10f - orderInt - 1);
 		transform.localPosition = vec;
 
-		yield return new WaitForSeconds (5);
+		yield return new WaitForSeconds (8);
 		int blockIndex = dataSaver.currentBlockIndex - 1;
 		if (blockIndex == dataSaver.halfConditionIndex ||
-			blockIndex == dataSaver.halfConditionIndex + 1 ||
 			blockIndex == dataSaver.fullConditionIndex){
-
+	
 				SceneManager.LoadScene ("stress_evaluation");
 		}
 		else {

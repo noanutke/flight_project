@@ -141,10 +141,10 @@ function Update()
 	var names = Input.GetJoystickNames();
 
     if(Input.GetKeyDown(KeyCode.JoystickButton0)){
-    	nBackScript.nbackButtonPressed();
+    	nBackScript.nbackButtonPressed(0);
     }
     else if(Input.GetKeyDown(KeyCode.JoystickButton1)){
-    	nBackScript.bipButtonPressed();
+    	nBackScript.nbackButtonPressed(1);
     }
 	// Move forward	
 	transform.Translate(Vector3.forward*Time.deltaTime*speed);
@@ -193,12 +193,8 @@ function Update()
 		{
 			// Set a general stick-movement marker into the data stream via LSL
 			// This marker will be the same for every stick movement.
-			runFlightScript.setMarkerForControlFlight ("StickMvmtPitch_All");
+			runFlightScript.setMarkerForControlFlight ("sPitch");
 
-			// Add a marker to indicate movement of the stick in pitch direction as
-			// defined by a change of the pitch value from 0 to non 0. RunFlightSim
-			// annotates the string of this marker with the size of the next ring.
-			runFlightScript.sendMarkerWithRingSize ( "StickMvmtPitch" );
 		}
 	}
 
@@ -209,12 +205,8 @@ function Update()
 		{
 			// Set a general stick-movement marker into the data stream via LSL
 			// This marker will be the same for every stick movement.
-			runFlightScript.setMarkerForControlFlight ("StickMvmtYaw_All");
+			runFlightScript.setMarkerForControlFlight ("sYaw");
 
-			// Add a marker to indicate movement of the stick in pitch direction as
-			// defined by a change of the pitch value from 0 to non 0. RunFlightSim
-			// annotates the string of this marker with the size of the next ring.
-			runFlightScript.sendMarkerWithRingSize ( "StickMvmYaw" );
 		}
 	}
 
