@@ -10,9 +10,9 @@ using System.Linq;
 
 
 public class dataSaver : MonoBehaviour {
-	public int[] histogramColumns = new int[10];
-	public List<int> fixationsArray = new List<int>(new int[]{3,3,3,3,3,6,6,6,6,6,9,9,9,9});
-	public List<int> precentileInHistogram = new List<int> (new int[]{ 2, 2, 2, 2, 3, 3, 3, 3, 3, 4 });
+	public int[] histogramColumns;
+	public List<int> fixationsArray;
+	public List<int> precentileInHistogram;
 	public bool withEyeTracker = false;
 	public bool inSecondSession = false;
 	public string blockOrderNumber = "";
@@ -29,6 +29,8 @@ public class dataSaver : MonoBehaviour {
 	public string subjectNumber;
 	public int columnInHistogram;
 
+	public static List<string> soundsTypes = new List<string> (new string[] {"alarm", "alarm", "scream", "scream", "scream"});
+	public static int indexInBlocksWithAlarms = 0;
 	public static int redAmountInBBlocks = 5;
 	public static int redAmountInABlocks = 6;
 	public static int targetAmountRequired = 4;
@@ -210,12 +212,11 @@ public class dataSaver : MonoBehaviour {
 		}
 
 		public void generateAversiveSound(int trialsAmount) {
-			List<string> soundsTypes = new List<string> (new string[] {"alarm", "alarm", "scream", "scream", "scream"});
-			soundsTypes = dataSaver.shuffle (soundsTypes);
+
 
 			this.sounds = new List<string> ();
 			int lettersAmount = trialsAmount;
-			if (this.blockType == "b") { // we have zero alarms
+			if (this.isBaseline || this.blockType == "b") { // we have zero alarms
 				int i=0;
 				for (i = 0; i < lettersAmount; i++) {
 					this.sounds.Insert (0, "no");
@@ -231,12 +232,13 @@ public class dataSaver : MonoBehaviour {
 				int randomIndex = Random.Range (0, possibleRedAmount);
 				int possibleRedIndex = 0;
 				i = 0;
-				int indexInSoundsTypes = 0;
+
 				for (i = 0; i < lettersAmount; i++) {
 					if (this.colors [i] == "red" && i > 0 && this.colors [i-1] == "red") {
 						if (possibleRedIndex == randomIndex) {
-							this.sounds.Insert (i, soundsTypes[indexInSoundsTypes]);
-							indexInSoundsTypes++;
+							this.sounds.Insert (i, dataSaver.soundsTypes[dataSaver.indexInBlocksWithAlarms]);
+							dataSaver.indexInBlocksWithAlarms++;
+
 						} else {
 							this.sounds.Insert (i, "no");
 						}
@@ -248,7 +250,6 @@ public class dataSaver : MonoBehaviour {
 
 			}
 		}
-
 
 
 		public void readInputPropertiesForBlock(string order = "1") {
@@ -376,6 +377,10 @@ public class dataSaver : MonoBehaviour {
 		block.isCalibration = isCalibration;
 		block.withNback = withNBack;
 
+		if (block.nLevel == "0") {
+			block.targetLetter = "1";
+		}
+
 
 		block.generateLetters (dataSaver.trialsAmountTestblocks, dataSaver.targetAmountRequired);
 		block.generateColors (dataSaver.trialsAmountTestblocks);
@@ -389,6 +394,8 @@ public class dataSaver : MonoBehaviour {
 
 
 	public bool initCondition(string stressCondition, int speed, string subjectNumber, string order) {
+		dataSaver.soundsTypes = dataSaver.shuffle (dataSaver.soundsTypes);
+		this.precentileInHistogram = new List<int> (new int[]{ 2, 2, 2, 2, 3, 3, 3, 3, 3, 4 });
 		this.precentileInHistogram = dataSaver.shuffleInt (this.precentileInHistogram);
 		this.blockOrderNumber = order;
 
@@ -529,7 +536,7 @@ public class dataSaver : MonoBehaviour {
 		int i = 0;
 
 		for (i = 0; i < allBlocksOrder.Count; i++) {
-			
+
 			string[] parts = allBlocksOrder [i].Split ('_');
 
 			Block block = new Block ();
@@ -730,7 +737,7 @@ public class dataSaver : MonoBehaviour {
 	public int getBlocksCount() {
 		return this.blocksCount;
 	}
-		
+
 	public string getTargetLetter() {
 		return this.blocksOrder [this.currentBlockIndex].targetLetter;
 	}
@@ -755,7 +762,8 @@ public class dataSaver : MonoBehaviour {
 		DontDestroyOnLoad(this.gameObject);
 	}
 
-	public void buildHistogram(int column) {
+	public void buildHistogram(int scoreInColumn) {
+		int column = scoreInColumn - 1; // histogramColumns Array starts from index zero 
 		this.columnInHistogram = column;
 		this.histogramColumns = new int[]{0,0,0,0,0,0,0,0,0,0};
 
@@ -776,10 +784,10 @@ public class dataSaver : MonoBehaviour {
 			}
 			this.histogramColumns [currentColumn]++;
 		}
-			
+
 		int maxValue = column <= 5 ? column + 4 : 9;
 
-		maxValue = Random.Range (column + 2, maxValue);
+		maxValue = Random.Range (column + 2 > maxValue? maxValue : column + 2, maxValue);
 		// choose 3 low scores locations
 		index = 0;
 		for (index = 0; index < maxValue-column; index++) {
@@ -789,10 +797,11 @@ public class dataSaver : MonoBehaviour {
 		index = 0;
 		for (index = 0; index < 10 - this.precentileInHistogram [this.currentBlockIndex] - (maxValue-column)
 			; index++) {
-			int currentColumn = Random.Range(column + 1, maxValue);
+			int currentColumn = Random.Range(column + 1 > maxValue? maxValue : 
+				column + 1, maxValue);
 			this.histogramColumns [currentColumn]++;
 		}
-			
+
 	}
 
 }

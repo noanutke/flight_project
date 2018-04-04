@@ -226,7 +226,7 @@ function setStartMarker() {
 	parallelPortScript.OutputToParallel(dataSaverScript.currentBlockIndex+1);
 
 
-	lslBCIInputScript.setMarker ("RunStart_Condition_" + dataSaverScript.condition + "_nLevel_" + n + "_ringSize_" + ringSize + 
+	lslBCIInputScript.setMarker ("runStart_condition_" + dataSaverScript.condition + "_nLevel_" + n + "_ringSize_" + ringSize + 
 	"_blockOrdinal_" + dataSaverScript.getType() + 
 	"_isPractice_" + isPractice + "_blockNumber_"
 	+ dataSaverScript.currentBlockIndex + "_speed_" + dataSaverScript.moveSpeed + "_subjectNumber_" + dataSaverScript.subjectNumber + 
@@ -294,8 +294,8 @@ function EndLevel()
 	if (withNback == true) {
 
 		var nBackHitsFloat: float = nBackHits + 0.0f;
-		var nBackFAFloat: float =  nBackHits + 0.0f;
-		nBackSuccessRate = ((nBackHitsFloat / 4 ) - (nBackFAFloat / 36 ))* 100;
+		var nBackFAFloat: float =  nBackFA + 0.0f;
+		nBackSuccessRate = ((nBackHitsFloat / 4 ) - (nBackFAFloat / 8 ))* 100;
 		if (nBackSuccessRate < 0) {
 			nBackSuccessRate = 0;
 		}
@@ -307,17 +307,13 @@ function EndLevel()
 	var orderInt = Mathf.Ceil (order / 10);
 
 	orderInt = orderInt - 1;
-	if (order == 0) {
-		orderInt = 0;
-	} 
-	else if (orderInt <= 1) {
+	if (orderInt <= 1) {
 		orderInt = 1;
 	}
 
-	dataSaverScript.buildHistogram(orderInt);
 
 	// Changed, FJ, 20160403 - Send start marker with condition
-	lslBCIInputScript.setMarker ("RunEnd");
+	lslBCIInputScript.setMarker ("runEnd");
 
 	parallelPortScript.OutputToParallel(100);
 	if (dataSaverScript.getIsCalibration() == true) {
@@ -327,11 +323,13 @@ function EndLevel()
 			SceneManagement.SceneManager.LoadScene ("successRates");
 	}
 	else if (dataSaverScript.condition == "stress" && dataSaverScript.getIsBaseline() == false) {
+		dataSaverScript.buildHistogram(orderInt);
 		dataSaverScript.updateBlockIndex();
 		SceneManagement.SceneManager.LoadScene ("histogramBuilder");
 	}
 	else if (dataSaverScript.currentBlockIndex == dataSaverScript.halfConditionIndex ||
 	dataSaverScript.currentBlockIndex == dataSaverScript.fullConditionIndex){
+		
 		dataSaverScript.updateBlockIndex();
 		SceneManagement.SceneManager.LoadScene ("stress_evaluation");
 	}
@@ -371,7 +369,7 @@ function readNextLetter() {
 	tooSlow = false;
 
 	var letter = letters[currentLetter];
-	lslBCIInputScript.setMarker ("letter_" + letter);
+	lslBCIInputScript.setMarker ("letter_letter_" + letter);
 
 	targetPresented = isTarget();
 
@@ -436,8 +434,8 @@ function initSounds(audioObjects) {
 }
 
 
-function nbackButtonPressed(key) {
-	lslBCIInputScript.setMarker ("key_" + key);
+function nbackButtonPressed(key) {	
+	lslBCIInputScript.setMarker ("keyPressed_key" + key);
 
 
 	if (withNback == false) {
@@ -452,13 +450,13 @@ function nbackButtonPressed(key) {
 	if (isTarget() ) {		
 			setNbackSuccess();
 			nBackHits += 1;
-			lslBCIInputScript.setMarker ("nBack_1_1");
+			lslBCIInputScript.setMarker ("nBack_expected_1_actual_1");
 
 	}
 	else {
 		setNbackFailure();
 		nBackFA += 1;
-		lslBCIInputScript.setMarker ("nBack_0_1");
+		lslBCIInputScript.setMarker ("nBack_expected_0_actual_1");
 	}
 }
 
@@ -498,7 +496,9 @@ function setPerformanceLevel() {
 	if (withStress == false) {
 		return;
 	}
-	lslBCIInputScript.setMarker ("RingColor_" + currentColor);
+	if (currentLetter == 0 || currentColor != colors[currentLetter-1]) {
+		lslBCIInputScript.setMarker ("colorChanged_color_" + currentColor);
+	}
 
 
 }
@@ -548,13 +548,13 @@ function playAlarmInNeeded() {
 
 		alarm2.Play();
 
-		lslBCIInputScript.setMarker ("aversive" + "_alarm");
+		lslBCIInputScript.setMarker ("aversive_type" + "_alarm");
 	}
 	else if(sounds[currentLetter] == "scream") {
 
 		alarm.Play();
 
-		lslBCIInputScript.setMarker ("aversive" + "_scream");
+		lslBCIInputScript.setMarker ("aversive_type" + "_scream");
 	}
 }
 
@@ -562,11 +562,11 @@ function setFailureIfLastTrialMissed() {
 	if (!nbackButtonPressedForLastTrial) {
 		if (targetPresentedLastTrial) {
 			setNbackFailure();
-			lslBCIInputScript.setMarker ("nBack_1_0");
+			lslBCIInputScript.setMarker ("nBack_expected_1_actual_0");
 
 		}
 		else {
-			lslBCIInputScript.setMarker ("nBack_0_0");
+			lslBCIInputScript.setMarker ("nBack_expected_0_actual_0");
 		}
 	}
 

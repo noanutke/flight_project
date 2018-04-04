@@ -202,7 +202,7 @@ public class loadEvaluation : MonoBehaviour {
 				}
 			}
 		}
-		this.lslScript.setMarker ("sEval_load");
+		this.lslScript.setMarker ("eval_start_1_load_1");
 
 		this.startTime = Time.time;
 	}
@@ -295,7 +295,7 @@ public class loadEvaluation : MonoBehaviour {
 		speeds.Add (speed);
 
 		this.writeValuesToFile ();
-		this.lslScript.setMarker ("eEval_load");
+		this.lslScript.setMarker ("eval_end_1_load_1");
 
 		float currrentTime = Time.time;
 		if (dataSaverScript.currentBlockIndex-1 == dataSaver.halfConditionIndex && dataSaverScript.inSecondSession == false) {

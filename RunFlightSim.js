@@ -580,7 +580,7 @@ function checkIfRingFailedAndSendTrigggers(ringBounds) {
 
 		//lslBCIInputScript.setMarker (currentRing + "Fail_Size_" + Mathf.Abs(ringBounds.max.y - ringBounds.min.y));
 		var ringSize = Mathf.Abs(ringBounds.max.y - ringBounds.min.y);
-		lslBCIInputScript.setMarker("ring_0");	
+		lslBCIInputScript.setMarker("ring_passed_0");	
 
 		controlNbackScript.setRingFailure();
 
@@ -599,7 +599,7 @@ function sendTriggerRingPassed(ringBounds) {
 	if (iNextRing <= ( LowerRightRingArray.length-1 ) )
 	{
 		var ringSize = Mathf.Abs(ringBounds.max.y - ringBounds.min.y);
-		lslBCIInputScript.setMarker("ring_1");
+		lslBCIInputScript.setMarker("ring_passed_1");
 
 	}
 }
@@ -660,7 +660,7 @@ function SwitchArrowIfNeeded(ringIndex)
 			upArrowDirecionScript.ChangePosition(position);
 			upArrowDirecionScript.Show();
 			downArrowDirecionScript.Hide();
-			lslBCIInputScript.setMarker("arrow_u_u");
+			lslBCIInputScript.setMarker("arrow_location_u_direction_u");
 		}
 	}
 	if (currentArrow[0] == "up_pointingDown")	// show up direction arrow in down position
@@ -671,7 +671,7 @@ function SwitchArrowIfNeeded(ringIndex)
 			downArrowDirecionScript.ChangePosition(position);
 			downArrowDirecionScript.Show();
 			upArrowDirecionScript.Hide();
-			lslBCIInputScript.setMarker("arrow_u_d");
+			lslBCIInputScript.setMarker("arrow_location_u_direction_d");
 		}
 	}
 	if (currentArrow[0] == "down_pointingUp")	// show down direction arrow in up position
@@ -682,7 +682,7 @@ function SwitchArrowIfNeeded(ringIndex)
 			upArrowDirecionScript.ChangePosition(position);
 			upArrowDirecionScript.Show();
 			downArrowDirecionScript.Hide();
-			lslBCIInputScript.setMarker("arrow_d_u");
+			lslBCIInputScript.setMarker("arrow_location_d_direction_u");
 		}
 	}
 	if (currentArrow[0] == "down_pointingDown")	// show down direction arrow in down position
@@ -693,7 +693,7 @@ function SwitchArrowIfNeeded(ringIndex)
 			downArrowDirecionScript.ChangePosition(position);
 			upArrowDirecionScript.Hide();
 			downArrowDirecionScript.Show();
-			lslBCIInputScript.setMarker("arrow_d_d");
+			lslBCIInputScript.setMarker("arrow_location_d_direction_d");
 		}
 	}
 	if (currentArrow[1] == "left_pointingRight")	// show up direction arrow in up position
@@ -704,7 +704,7 @@ function SwitchArrowIfNeeded(ringIndex)
 			rightArrowDirecionScript.ChangePosition(position);
 			rightArrowDirecionScript.Show();
 			leftArrowDirecionScript.Hide();
-			lslBCIInputScript.setMarker("arrow_l_r");
+			lslBCIInputScript.setMarker("arrow_location_l_direction_r");
 		}
 	}
 	if (currentArrow[1] == "right_pointingRight")	// show up direction arrow in up position
@@ -715,7 +715,7 @@ function SwitchArrowIfNeeded(ringIndex)
 			rightArrowDirecionScript.ChangePosition(position);
 			rightArrowDirecionScript.Show();
 			leftArrowDirecionScript.Hide();
-			lslBCIInputScript.setMarker("arrow_r_r");
+			lslBCIInputScript.setMarker("arrow_location_r_direction_r");
 		}
 	}
 	if (currentArrow[1] == "right_pointingLeft")	// show up direction arrow in up position
@@ -726,7 +726,7 @@ function SwitchArrowIfNeeded(ringIndex)
 			leftArrowDirecionScript.ChangePosition(position);
 			leftArrowDirecionScript.Show();
 			rightArrowDirecionScript.Hide();
-			lslBCIInputScript.setMarker("arrow_r_l");
+			lslBCIInputScript.setMarker("arrow_location_r_direction_l");
 		}
 	}
 	if (currentArrow[1] == "left_pointingLeft")	// show up direction arrow in up position
@@ -737,7 +737,7 @@ function SwitchArrowIfNeeded(ringIndex)
 			leftArrowDirecionScript.ChangePosition(position);
 			leftArrowDirecionScript.Show();
 			rightArrowDirecionScript.Hide();
-			lslBCIInputScript.setMarker("arrow_l_l");
+			lslBCIInputScript.setMarker("arrow_location_l_direction_l");
 		}
 	}
 
@@ -749,7 +749,7 @@ function SwitchArrowIfNeeded(ringIndex)
 function EndLevel() 
 {
 	// Changed, FJ, 20160403 - Send start marker with condition
-	lslBCIInputScript.setMarker ("RunEnd");
+	lslBCIInputScript.setMarker ("runEnd");
 	// --------------------------------------------------------
 
 	if(UpperRightRingArray && UpperRightRingArray.length > 0) {

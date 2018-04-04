@@ -98,7 +98,7 @@ public class stressEvaluation : MonoBehaviour {
 			}
 		}
 
-		this.lslScript.setMarker ("sEval_stress");
+		this.lslScript.setMarker ("eval_start_1_stress_1");
 		this.startTime = Time.time;
 	}
 
@@ -175,7 +175,7 @@ public class stressEvaluation : MonoBehaviour {
 		speeds.Add (speed);
 		float currrentTime = Time.time;
 		this.writeValuesToFile ();
-		this.lslScript.setMarker ("eEval_stress");
+		this.lslScript.setMarker ("eval_end_1_stress_1");
 		if (dataSaverScript.currentBlockIndex == 0 || (
 			dataSaverScript.currentBlockIndex == dataSaver.halfConditionIndex + 1 && dataSaverScript.inSecondSession == true)) {
 			SceneManager.LoadScene ("Instructions");

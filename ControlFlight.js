@@ -146,6 +146,12 @@ function Update()
     else if(Input.GetKeyDown(KeyCode.JoystickButton1)){
     	nBackScript.nbackButtonPressed(1);
     }
+    else if(Input.GetKeyDown(KeyCode.JoystickButton2)){
+    	nBackScript.nbackButtonPressed(2);
+    }
+    else if(Input.GetKeyDown(KeyCode.JoystickButton3)){
+    	nBackScript.nbackButtonPressed(3);
+    }
 	// Move forward	
 	transform.Translate(Vector3.forward*Time.deltaTime*speed);
 	//transform_Arrows.Translate(Vector3.forward*Time.deltaTime*speed);
@@ -193,7 +199,7 @@ function Update()
 		{
 			// Set a general stick-movement marker into the data stream via LSL
 			// This marker will be the same for every stick movement.
-			runFlightScript.setMarkerForControlFlight ("sPitch");
+			runFlightScript.setMarkerForControlFlight ("pitch_isStart_1");
 
 		}
 	}
@@ -205,7 +211,7 @@ function Update()
 		{
 			// Set a general stick-movement marker into the data stream via LSL
 			// This marker will be the same for every stick movement.
-			runFlightScript.setMarkerForControlFlight ("sYaw");
+			runFlightScript.setMarkerForControlFlight ("yaw_isStart_1");
 
 		}
 	}

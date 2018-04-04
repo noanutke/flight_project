@@ -19,19 +19,30 @@ public class instructions : MonoBehaviour {
 	private dataSaver dataSaver;
 
 	void Update () {
+
+		if (this.dataSaver.getIsCalibration () || this.dataSaver.getIsPractice ()) {
+			if (Input.GetKeyDown (KeyCode.Space)) {
+				SceneManager.LoadScene ("FlightSimTest");
+				return;
+			}
+		}
+
 		float currrentTime = Time.time;
 		if (startTimeFixation > -1 && currrentTime - this.startTimeFixation > this.timeLimitFixation) {
-			this.lslScript.setMarker ("eFixation");
+			this.lslScript.setMarker ("fixation_end_1");
 			float startTime = Time.time;
-			print("endFixation");
-			print(startTime);
+
 			SceneManager.LoadScene ("FlightSimTest");
 			return;
 		}
 		if (startTimeInstructions > -1 && currrentTime - this.startTimeInstructions > this.timeLimitInstructions) {
 			startTimeFixation = Time.time;
-			this.lslScript.setMarker ("eInstructions");
-			this.lslScript.setMarker ("sFixation");
+			this.lslScript.setMarker ("instructions_end_1");
+			if (this.dataSaver.getIsCalibration () || this.dataSaver.getIsPractice ()) { 
+				SceneManager.LoadScene ("FlightSimTest");
+				return;
+			}
+			this.lslScript.setMarker ("fixation_start_1");
 			this.showFixation ();
 		}
 	}
@@ -74,7 +85,7 @@ public class instructions : MonoBehaviour {
 			this.dataSaver = dataSaverObject.GetComponent<dataSaver> ();
 			this.lslScript = this.dataSaver.getLslScript();
 
-			this.lslScript.setMarker ("sInstructions");
+			this.lslScript.setMarker ("instructions_start_1");
 			int currentBlockIndex = this.dataSaver.currentBlockIndex;
 
 			if (this.dataSaver.getIsCalibration () == true) {
