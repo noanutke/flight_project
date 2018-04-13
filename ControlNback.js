@@ -7,30 +7,14 @@ var moveMarkerScript: NewBehaviourScript;
 var dataSaverScript: dataSaver;
 var parallelPortScript: parallelPort;
 
-public static var finishedBlocksInCondition: boolean;
-public static var n: String = '1';
-public static var blockOrdinal = "a";
-public static var targetLetter = "1";
-public static var ringSize = "big";
-public static var stroopCondition = "incong";
-public static var trialsAmountTest = 12;
-public static var trialsAmountBaseline = 6;
-public var isPractice = false;
-public var currentBlockTrialsAmount = 0;
-
-var perf1 = Color32(0,255,0,1);
-var perf2 = Color32(128,255,0,1);
-var perf3 = Color32(255,255,0,1);
-var perf4 = Color32(255,128,0,1);
-var perf5 = Color32(255,0,0,1);
-
-var alarmChancePerf1 = 10;
-var alarmChancePerf2 = 8;
-var alarmChancePerf3 = 6;
-var alarmChancePerf4 = 4;
-var alarmChancePerf5 = 2;
-
-var currentPerfLevel = 1;
+var runEndParallelMarker = 100;
+var finishedBlocksInCondition: boolean;
+var n = "1";
+var blockOrdinal = "a";
+var targetLetter = "1";
+var ringSize = "big";
+var isPractice = false;
+var currentBlockTrialsAmount = 0;
 
 //Sound variables
 var one: AudioSource;
@@ -41,29 +25,20 @@ var five: AudioSource;
 var six: AudioSource;
 var seven: AudioSource;
 var eight: AudioSource;
+var scream: AudioSource;
 var alarm: AudioSource;
-var bip: AudioSource;
-var alarm2: AudioSource;
-//var markerPositions: float[];
+
 var letters: String[];
 var colors: String[];
 var sounds: String[];
-var bips: String[];
 
-var audioFiles = [];
 var currentLetter: int = -1;
 var nbackButtonPressedForTrial = false;
-var bipButtonPressedForTrial = false;
 var nbackButtonPressedForLastTrial = false;
-var bipButtonPressedForLastTrial = false;
-var expectedRT = 1000; //ms
 var targetPresented = false;
 var targetPresentedLastTrial = false;
-var tooSlow = false;
-var tooSlowLastTrial = false;
 var lastLetterTime = 0;
-var successInRow = 0;
-var failuresInRow = 0;
+
 var flightFailures = 0;
 var flightSuccess = 0;
 var nBackFailures = 0;
@@ -71,34 +46,26 @@ var nBackHits = 0;
 var nBackFA = 0;
 var prefab1: Transform;
 var prefab2: Transform;
+var greenColor = Color32(0,255,0,1);
+var redColor = Color32(255,0,0,1);
 
-var bipAppeared = false;
-
-public static var withStress: boolean;
-public static var withNback: boolean;
-public static var order: int;
-
-public static var condition: String;
-var maxFailuresInRow = 1;
-var nBackFailure = false;
-var ringFailure = true;
-
-
+var withStress: boolean;
+var withNback: boolean;
+var order: int;
+var condition: String;
 
 var speedInput: UI.Text;
 
 var nBackFilename = "";
 var invoked = false;
 
-var ringsCountForCalibration = 0;
-var ringsFailuresCountForCalibration = 0;
-var calibration: boolean;
-var targetFailuresForCalibration = 3;
-var targetRingsCountForCalibration = 10;
-public static var moveSpeed :int;
-var isUpdating = false;
-
-
+var ringsCountForCalibration: int;
+var ringsFailuresCountForCalibration: int;
+var isCalibration: boolean;
+var targetFailuresForCalibration: int;
+var targetRingsCountForCalibration: int;
+var moveSpeed :int;
+var isUpdatingSpeed = false; // True if we are currently updating the speed (relevant for calibration)
 
 private var lslBCIInputScript: LSL_BCI_Input;
 
@@ -106,14 +73,9 @@ function getLevel() {
 	return n;
 }
 
-function getCalibration() {
-	return calibration;
-}
-
 function getCondition() {
 	return dataSaverScript.condition;
 }
-
 
 function getSpeed() {
 	return moveSpeed;
@@ -123,70 +85,69 @@ function Awake() {
 }
 
 function Start () {
-
+	ringsFailuresCountForCalibration = 0;
+	ringsCountForCalibration = 0;
 	currentLetter = -1;
 	flightFailures = 0;
 	nBackFailures = 0;
 	flightSuccess = 0;
+
 	var ob = GameObject.Find("dataSaver");
 	dataSaverScript = ob.GetComponent(dataSaver) as dataSaver;
-
 	parallelPortScript = dataSaverScript.getParallelsScript();
-
-	targetFailuresForCalibration = dataSaverScript.ringsFailuresForCalibrationTarget;
-	targetRingsCountForCalibration = dataSaverScript.ringsAmountForCalibrationPhase;
-	calibration = dataSaverScript.getIsCalibration();
-
 
 	initilaizeCurrentBlockProperties();
 
 	var mash: MeshRenderer;
 	var renderers = prefab1.GetComponentsInChildren(MeshRenderer);
 	mash = renderers[0];
-	mash.sharedMaterials[0].color = perf1;
+	mash.sharedMaterials[0].color = greenColor;
 
 	yield WaitForSeconds(3);
-	if (invoked == false) { 
+	if (invoked == false) {
+		// read a letter every 3 seconds starting now
 		InvokeRepeating("readNextLetter", 0, 3);
-		InvokeRepeating("setPerformanceLevel", 0.49999, 3);
+		// change the ring color and play alarm if needed after letter stimulus ends (letter stimulus lasts 500ms)
+		InvokeRepeating("changeRingsColorAndPlayAlarmIfNeeded", 0.49999, 3);	
 		invoked = true;
 	}
 }
 
 
-
+// This function initialize the properties and stimuli of the current block from dataSaver 
 function initilaizeCurrentBlockProperties() {
-	this.letters = dataSaverScript.getLetters();
-	this.colors = dataSaverScript.getColors();
-	this.sounds = dataSaverScript.getAlarms();
 
+	isCalibration = dataSaverScript.getIsCalibration();
+	if (isCalibration) {
+		targetFailuresForCalibration = dataSaverScript.ringsFailuresForCalibrationTarget;
+		targetRingsCountForCalibration = dataSaverScript.ringsAmountForCalibrationPhase;
+	}
+	letters = dataSaverScript.getLetters();
+	colors = dataSaverScript.getColors();
+	sounds = dataSaverScript.getAlarms();
+
+	isPractice = dataSaverScript.getIsPractice();
 	withStress = dataSaverScript.condition == "stress"? true: false;
 	n = dataSaverScript.getN();
-	stroopCondition = dataSaverScript.getStroopCondition();
 	blockOrdinal = dataSaverScript.getType();
 	targetLetter = dataSaverScript.getTargetLetter();
 	withNback = dataSaverScript.getWithNBack();
 	ringSize = dataSaverScript.getRingSize();
 	moveSpeed = dataSaverScript.moveSpeed;
-	currentBlockTrialsAmount = trialsAmountTest;
-	if (dataSaverScript.getIsBaseline() || withNback == false) {
+	currentBlockTrialsAmount = dataSaverScript.trialsAmountTestblocks;
+	if (dataSaverScript.getIsBaseline()) {
 		withStress = false;
-		currentBlockTrialsAmount = trialsAmountBaseline;
+		currentBlockTrialsAmount = dataSaverScript.trialsAmountBaselineBlocks;
 	}
-
 
 }
 
 function setRingFailure() {
-
-	if (isUpdating) {
+	if (isUpdatingSpeed) {
 		return;
 	}
-	failuresInRow += 1;
 	flightFailures += 1;
-	successInRow = 0;
-
-	if (dataSaverScript.getIsCalibration()) {
+	if (isCalibration) {
 		ringsFailuresCountForCalibration += 1;
 		ringsCountForCalibration += 1;
 		updateSpeedIfNeeded();
@@ -194,70 +155,62 @@ function setRingFailure() {
 }
 
 function setNbackFailure() {
-	failuresInRow = maxFailuresInRow;
 	nBackFailures += 1;
-	successInRow = 0;
-	nBackFailure = true;
-}
-
-function setNbackSuccess() {
-	successInRow += 1;
-	failuresInRow = 0;
-	nBackFailure = false;
 }
 
 function setRingSuccess() {
-
-	if (isUpdating) {
+	
+	if (isUpdatingSpeed) {
 		return;
 	}
 	flightSuccess += 1;
-	successInRow += 1;
-	failuresInRow = 0;
-	ringFailure = false;
-	if (dataSaverScript.getIsCalibration()) {
+	if (isCalibration) {
 		ringsCountForCalibration += 1;
 		updateSpeedIfNeeded();
 	}
 }
 
 function setStartMarker() {
-	//blockIndex = dataSaverScript.currentBlockIndex+1;
 	parallelPortScript.OutputToParallel(dataSaverScript.currentBlockIndex+1);
 
-
-	lslBCIInputScript.setMarker ("runStart_condition_" + dataSaverScript.condition + "_nLevel_" + n + "_ringSize_" + ringSize + 
+	lslBCIInputScript.setMarker (
+	"runStart_condition_" + dataSaverScript.condition + 
+	"_nLevel_" + n + 
+	"_ringSize_" + ringSize + 
 	"_blockOrdinal_" + dataSaverScript.getType() + 
-	"_isPractice_" + isPractice + "_blockNumber_"
-	+ dataSaverScript.currentBlockIndex + "_speed_" + dataSaverScript.moveSpeed + "_subjectNumber_" + dataSaverScript.subjectNumber + 
-	"_isBaseline_"  + dataSaverScript.getIsBaseline() + "_order_" + dataSaverScript.blockOrderNumber);
-
+	"_isPractice_" + isPractice +
+	"_blockNumber_" + dataSaverScript.currentBlockIndex + 
+	"_speed_" + dataSaverScript.moveSpeed + 
+	"_subjectNumber_" + dataSaverScript.subjectNumber + 
+	"_isBaseline_"  + dataSaverScript.getIsBaseline() + 
+	"_order_" + dataSaverScript.blockOrderNumber);
 }
 
 function updateSpeedIfNeeded() {
-	if (isUpdating) {
+	if (isUpdatingSpeed) {
 		return;
 	}
-	isUpdating = true;
-	if (ringsCountForCalibration >= targetRingsCountForCalibration) {
-		
+	isUpdatingSpeed = true;
+	// We are updating speed only if player passed through targetRingsCountForCalibration amount of rings
+	if (ringsCountForCalibration >= targetRingsCountForCalibration) {	
 		if (targetFailuresForCalibration > 0) {
 			if(ringsFailuresCountForCalibration >= targetFailuresForCalibration) {
 				dataSaverScript.moveSpeed =  moveSpeed;
 				EndLevel();
 			}
 			else {
+				// if the input value for calibration is 0 - we don't want to raise the speed
+				// just keep goint until we decide to stop - to enable a long practice woth the same speed
 				if ( targetFailuresForCalibration != targetRingsCountForCalibration) {
 					moveSpeed += 20;
 				}
 				ringsCountForCalibration = 0;
 				ringsFailuresCountForCalibration = 0;
-
 			}
-
-
 		}
-		else if (targetFailuresForCalibration == 0) {
+
+		else {	// If we demand 100% success (0 failures) - we don't raise the speed - just keep 
+				// going until 100% success and then end the level.
 			if (ringsFailuresCountForCalibration == 0) {
 				dataSaverScript.moveSpeed =  moveSpeed;
 				EndLevel();
@@ -268,31 +221,24 @@ function updateSpeedIfNeeded() {
 			}
 		}
 	}
-	isUpdating = false;	
+	isUpdatingSpeed = false;	
 }
 
 function setPrefabRings(_prefab1, _prefab2) {
-
 	prefab1 = _prefab1;
 	prefab2 = _prefab2;
-	//lslBCIInputScript = gameObject.GetComponent(LSL_BCI_Input); 
 }
 
 function setLSL(lslObject: LSL_BCI_Input) {
 	lslBCIInputScript = lslObject;
 }
 
-
-
-function EndLevel() 
-{
-
+function calculatePerformanceAndUpdateDataSaver() {
 	var flightAmount: float = flightSuccess + flightFailures + 0.0f;
 	var flightSuccessRate: float = flightSuccess / flightAmount * 100;
 
 	var nBackSuccessRate: float = 0.0;
 	if (withNback == true) {
-
 		var nBackHitsFloat: float = nBackHits + 0.0f;
 		var nBackFAFloat: float =  nBackFA + 0.0f;
 		nBackSuccessRate = ((nBackHitsFloat / 4 ) - (nBackFAFloat / 8 ))* 100;
@@ -302,28 +248,41 @@ function EndLevel()
 	}
 
 	dataSaverScript.updateSuccessRate(flightSuccessRate, nBackSuccessRate);
+}
 
-	var order = 0.3*nBackSuccessRate + 0.7*flightSuccessRate;
-	var orderInt = Mathf.Ceil (order / 10);
+function calculateColumnForScoreInHistogram() {
+	var flightSuccessPercent = dataSaverScript.flightSuccess;
+	var nBackSuccessPercent = dataSaverScript.nBackSuccess;
+	var combinedSuccessPercent = 0.3*nBackSuccessPercent + 0.7*flightSuccessPercent;
 
-	orderInt = orderInt - 1;
-	if (orderInt <= 1) {
-		orderInt = 1;
+	// change scale from 1-100 to 1-10 and round up (9.2 becomes 10)
+	var scoreInHistogram = Mathf.Ceil (combinedSuccessPercent / 10);
+
+	// Lower location of score in histogram by one
+	scoreInHistogram = scoreInHistogram - 1;
+	if (scoreInHistogram <= 1) {
+		scoreInHistogram = 1;
 	}
+	return scoreInHistogram;
+}
 
+function EndLevel() 
+{
+	calculatePerformanceAndUpdateDataSaver();
 
-	// Changed, FJ, 20160403 - Send start marker with condition
+	// send LSL and parallel port triggers for block end
 	lslBCIInputScript.setMarker ("runEnd");
+	parallelPortScript.OutputToParallel(runEndParallelMarker);
 
-	parallelPortScript.OutputToParallel(100);
-	if (dataSaverScript.getIsCalibration() == true) {
+	// Decide which scene to load next
+	if (isCalibration == true) {
 		SceneManagement.SceneManager.LoadScene ("calibrationResults");
 	}
-	else if (dataSaverScript.getIsLastPractice()) {
+	else if (isPractice) {
 			SceneManagement.SceneManager.LoadScene ("successRates");
 	}
-	else if (dataSaverScript.condition == "stress" && dataSaverScript.getIsBaseline() == false) {
-		dataSaverScript.buildHistogram(orderInt);
+	else if (withStress) {
+		dataSaverScript.buildHistogram(calculateColumnForScoreInHistogram());
 		dataSaverScript.updateBlockIndex();
 		SceneManagement.SceneManager.LoadScene ("histogramBuilder");
 	}
@@ -341,32 +300,27 @@ function EndLevel()
 }
 
 function readNextLetter() {
-	var startTime = Time.time;
-	print('readLetter');
-	print(startTime);
 	targetPresentedLastTrial = targetPresented;
 	nbackButtonPressedForLastTrial = nbackButtonPressedForTrial;
+	currentLetter += 1;
 
-	if (currentLetter != -1 && withNback != false) {
+	// check if we need to check for missed trial
+	if (currentLetter != 0 && withNback != false) {
+		// this is not the first trial and we are "withNback" so we need to check for missed trial
 		setFailureIfLastTrialMissed();
 	}
 
-	currentLetter += 1;
-
-	if (!calibration && currentLetter >= currentBlockTrialsAmount) {
+	// Only during calibration blocks we allow task to continue beyond the the letter amount
+	if (!isCalibration && currentLetter >= currentBlockTrialsAmount) {
 		EndLevel();
 		return;
 	}
 	if (withNback == false) {
+		// we should not read any letter if the current block is without nBack
 		return;
 	}
 
-
-
-	tooSlowLastTrial = tooSlow;
 	nbackButtonPressedForTrial = false;
-
-	tooSlow = false;
 
 	var letter = letters[currentLetter];
 	lslBCIInputScript.setMarker ("letter_letter_" + letter);
@@ -397,16 +351,12 @@ function readNextLetter() {
 	else if (letter == "8") {
 		eight.Play();
 	}
-
-
-	lastLetterTime = Time.time;
 }
 
 
 function Update () {
 
 }
-
 
 function getAudioObjectForFileName(objects: Component[], name: String) {
 	for (var audioSource: AudioSource in objects) {
@@ -428,16 +378,13 @@ function initSounds(audioObjects) {
 	six = getAudioObjectForFileName(audioObjects, '6');
 	seven = getAudioObjectForFileName(audioObjects, '7');
 	eight = getAudioObjectForFileName(audioObjects, '8');
-	alarm = getAudioObjectForFileName(audioObjects, 'scream');
-	bip = getAudioObjectForFileName(audioObjects, 'beep1');
-	alarm2 = getAudioObjectForFileName(audioObjects, 'alarm');
+	scream = getAudioObjectForFileName(audioObjects, 'scream');
+	alarm = getAudioObjectForFileName(audioObjects, 'alarm');
 }
 
 
 function nbackButtonPressed(key) {	
 	lslBCIInputScript.setMarker ("keyPressed_key" + key);
-
-
 	if (withNback == false) {
 		return;
 	}
@@ -445,10 +392,7 @@ function nbackButtonPressed(key) {
 		return;
 	}
 	nbackButtonPressedForTrial = true;
-	var currentTime = Time.time;
-	var rt = currentTime - lastLetterTime - 0.5;
-	if (isTarget() ) {		
-			setNbackSuccess();
+	if (isTarget()) {		
 			nBackHits += 1;
 			lslBCIInputScript.setMarker ("nBack_expected_1_actual_1");
 
@@ -470,7 +414,6 @@ function isTarget() {
 			return true;
 		}
 	}
-
 	else if (letters[currentLetter] == letters[perviousLetterIndex]) {
 		return true;
 	}
@@ -479,9 +422,8 @@ function isTarget() {
 	}	
 }
 
-function setPerformanceLevel() {
-
-	if (withStress == false || dataSaverScript.getIsBaseline()) {
+function changeRingsColorAndPlayAlarmIfNeeded() {
+	if (withStress == false) {
 		return;
 	}
 	var renderers: Component[];
@@ -492,51 +434,10 @@ function setPerformanceLevel() {
 	mash = renderers[0];
 	mash.sharedMaterials[0].color = colorRGB;
 
-	playAlarmInNeeded();
-	if (withStress == false) {
-		return;
-	}
 	if (currentLetter == 0 || currentColor != colors[currentLetter-1]) {
 		lslBCIInputScript.setMarker ("colorChanged_color_" + currentColor);
 	}
-
-
-}
-
-function shouldShowAlarmBasedOnPerfLevel() {
-	var chance = getAlarmChanceForPerfLevel();
-	var rand = Random.Range(1, chance+1);
-	return rand == 1;
-}
-
-function getAlarmChanceForPerfLevel(){
-	if (currentPerfLevel == 1) {
-		return alarmChancePerf1;
-	}
-	else if (currentPerfLevel == 2) {
-		return alarmChancePerf2;
-	}
-	else if (currentPerfLevel == 3) {
-		return alarmChancePerf3;
-	}
-	else if (currentPerfLevel == 4) {
-		return alarmChancePerf4;
-	}
-	return alarmChancePerf5;
-}
-
-
-function getRingsColor(color) {
-	if (color =="red") {
-		return perf5;
-	}
-	else {
-		return perf1;
-	}
-}
-
-function getPerfLevel() {
-	return currentPerfLevel;
+	playAlarmInNeeded();
 }
 
 function playAlarmInNeeded() {
@@ -545,16 +446,21 @@ function playAlarmInNeeded() {
 	}
 	var rand = Random.Range(1, 3);
 	if (sounds[currentLetter] == "alarm") {
-
-		alarm2.Play();
-
+		alarm.Play();
 		lslBCIInputScript.setMarker ("aversive_type" + "_alarm");
 	}
 	else if(sounds[currentLetter] == "scream") {
-
-		alarm.Play();
-
+		scream.Play();
 		lslBCIInputScript.setMarker ("aversive_type" + "_scream");
+	}
+}
+
+function getRingsColor(color) {
+	if (color =="red") {
+		return redColor;
+	}
+	else {
+		return greenColor;
 	}
 }
 
@@ -569,5 +475,4 @@ function setFailureIfLastTrialMissed() {
 			lslBCIInputScript.setMarker ("nBack_expected_0_actual_0");
 		}
 	}
-
 }

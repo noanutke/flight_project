@@ -199,7 +199,7 @@ function Update()
 		{
 			// Set a general stick-movement marker into the data stream via LSL
 			// This marker will be the same for every stick movement.
-			runFlightScript.setMarkerForControlFlight ("pitch_isStart_1");
+			runFlightScript.setMarkerForControlFlight ("pitch_start_1");
 
 		}
 	}
@@ -211,7 +211,7 @@ function Update()
 		{
 			// Set a general stick-movement marker into the data stream via LSL
 			// This marker will be the same for every stick movement.
-			runFlightScript.setMarkerForControlFlight ("yaw_isStart_1");
+			runFlightScript.setMarkerForControlFlight ("yaw_start_1");
 
 		}
 	}

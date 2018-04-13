@@ -1,17 +1,9 @@
 // RunFlightSim.js
 //
-// This script runs a flight simulator session, including creating and destroying 
-// objects (233s), starting and stopping the eyetracker and logger, and sending various 
-// messages to the log and EEG (via the Logger/eyelink scripts).
 // - This script places an object in each of the locations designated bin a text file.
 // - This script creates a ControlFlight script and passes speed/control parameters to it
 //   from the loader GUI.
-// - This script creates an eyelink script to help log events and objects.
-//
-// Created 9/3/14 by DJ.
-// Updated 9/15/14 by DJ - bug fixes, comments.
-// Updated 10/8/14 by SS - implemented practice flight
-// Updated 10/10/14 by SS - Flightperformance tracking and report, new control fn.
+
 //
 //---------------------------------------------------------------
 // Copyright (C) 2014 David Jangraw, <www.nede-neuro.org>
@@ -30,7 +22,7 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 //---------------------------------------------------------------
 
-// Allow stream reading
+
 import System.IO;
 
 //-----------------------//
@@ -38,6 +30,8 @@ import System.IO;
 //-----------------------//
 
 //---DECLARE GLOBAL VARIABLES
+
+// Declare scripts used by this script
 var controlNbackScript: ControlNback;
 var dataSaverScript: dataSaver;
 var upArrowDirecionScript: changeUpDirectionArrow;
@@ -45,58 +39,28 @@ var downArrowDirecionScript: changeDownDirectionArrow;
 var leftArrowDirecionScript: changeLeftDirectionArrow;
 var rightArrowDirecionScript: changeRightDirectionArrow;
 var crossScript: crossControl;
-var fixation: Sprite;
+var flightScript; // the script that allows the subject to control the flight
+var lslBCIInputScript; // Online communication with the BCI, here mainly to set markers
 
+var currentRing = "";	// current ring to pass through
+var width = 0;	// rings width
+var positivePosition = 50.00; // position for "positive" rings in both axes (y position for upper rings and x position for right rings)
+var negativePosition = -50.00; // position for "negative" rings in both axes (y position for lower rings and x position for left rings)
+var bigRingSize = 90;
+var mediumRingSize = 60;
+var smallRingSize = 30;
+var routeFilename = "";
 
-var currentRing = "UpRight";
-var width = 0;
+var prefabUpperRings: Transform;
+var prefabLowerRings: Transform;
 
-var subject = 0;
-var session = 0;
-var record_EDF_file = true; //set to true to tell the EyeLink to record an .edf file
-var EDF_filename: String; //Filename of the EyeLink EDF file when it's transfered to Display (Unity) computer
-
-//WHAT
-var objectPrevalence = 1.0; //chance that an object placement will have no object
-var categories : String[]; //the possible target/distractor categories
-var categoryState : int[];
-var categoryPrevalence : float[];
-var nCategories = 0;
-//var nObjToSee = 20;
-
-//WHERE
-// var routeFilename = "NedeConfig/TEST.txt";
-var routeFilename = "NedeConfig/SSL.txt";
-var ringPositions: Vector3[];
-var ringPrefab: Transform;
-var centerPrefab: Transform;
-var ringWidths: float[];
-var centerWidths: float[];
 var ringDepth = 10.0;
-var centerDepth = 5.0;
 var areAllRingsVisible = true;
-var isPractice = false;
-//WHEN
-var trialTime = Mathf.Infinity;
-//var recordObjBox = true; //send object bounding box to eyelink every frame
-var syncDelay = 1.0; //time between Eye/EEG sync signals
 
-// PHOTODIODE variables
-var isPhotodiodeUsed = true;
-var photodiodeSize = 100;
-private var WhiteSquare : Texture2D;
-private var BlackSquare : Texture2D;
-
-//To Dish Out to Other Scripts
-var offset_x = 50; //for eyelink calibration
-var offset_y = 150; //for eyelink calibration
-var gain_x = 1.0; //for eyelink calibration
-var gain_y = 1.0; //for eyelink calibration
-
-// Control Parameters
+// Control flight Parameters
 var moveSpeed = 180.0; //motion speed
 var pitchSpeed = 100.0; //for turning (vertically)
-var lockRoll = false;
+var lockRoll = true;
 var lockXpos = false;
 
 var driftAmplitude = 1.0; // max drift amplitude
@@ -107,47 +71,6 @@ var filterDelay = 0.0;
 var filterUpTime = 0.0;
 var filterDownTime = 0.0;
 
-// CHANGED, FJ, 20150514 --- Added closed loop (LSL) parameters
-var expCondition = 0;
-var LSL_BCI_Recv_FB_Enabled        = false;
-var LSL_BCI_Send_Markers_Enabled   = true;
-var LSL_BCI_Send_Feedback_Enabled  = true;
-var LSL_BCI_Send_StickMvmt_Enabled = true;
-
-// -------------------------------------------------------------
-
-
-//Performance Variables
-var loaderScript;
-var courseCompleted;
-var courseAccuracy;
-
-//Sound variables
-var one;
-var two;
-var three;
-var four;
-var five;
-var six;
-var seven;
-var eight;
-var alarm;
-var markerPositions: float[];
-var letters: String[];
-var audioFiles = [];
-
-
-var successInRow = 0;
-var failuresInRow = 0;
-// Private Variables
-
-
-private var eyelinkScript; //the script that passes messages to and receives eye positions from the eyetracker
-private var parallelPortScript;
-private var flightScript; // the script that allows the subject to control the flight
-private var portIsSync = false; //is parallel port sending Constants.SYNC?
-private var syncTime = 0.0; //  the next time when the sync pulse should be sent
-private var trialEndTime = Mathf.Infinity; //the time when the trial should end
 private var UpperRightRingArray: Array;
 private var LowerRightRingArray: Array;
 private var UpperLeftRingArray: Array;
@@ -157,35 +80,32 @@ private var nextLowerRightRingBounds: Bounds;
 private var nextUpperLeftRingBounds: Bounds;
 private var nextLowerLeftRingBounds: Bounds;
 private var iNextRing = 0;
-private var ringAccuracy = new Array();
 
-// CHANGED, FJ, 2015-05-11
-private var lslBCIInputScript; // Online communication with the BCI, here mainly to set markers
-private var nLevel;
-private var blockOrdinal;
-private var stroopCondition;
+
+private var withFlight;
 private var ringSize;
-private var condition;
-private var calibration;
+private var isCalibration;
 private var ringsAmountForCalibrationPhase;
 
 private var arrowsAmount = 420;
-private var firstRingPassed = false;
 private var arrowsArray = new Array();
 
-
-function createArrowsArray(stroopCondition: String) {
+// This method creates the arrows array
+function createArrowsArray() {
 	var congOptionsVertical = new Array("up_pointingUp", "down_pointingDown");
 	var congOptionsHorizontal = new Array("right_pointingRight", "left_pointingLeft");
 	var incongOptionsVertical = new Array("up_pointingDown", "down_pointingUp");
 	var incongOptionsHorizontal = new Array("left_pointingRight", "right_pointingLeft");
 
-
+	// choose 2 indices in the arrows array to contain the congruent trials
 	var uniqueIndices = new Array();
 	var finishedRandomSelection = false;
 	while (finishedRandomSelection == false) {
-		var index = Mathf.Floor(Random.Range(0.0,8.9));
+		// choose indices only in the range of 0-8 so that even subjects that fly in low speed will 
+		// experience 2 congruent trials (the minimum flight speed is assumed to be 170 - which guarantees above 9 rings)
+		var index = Mathf.Floor(Random.Range(0.0,10));
 		if (uniqueIndices.length > 0) {
+			// make sure that we haven't chose this index already
 			if (uniqueIndices[0] != index) {
 				uniqueIndices.Push(index);
 				finishedRandomSelection = true;
@@ -195,68 +115,27 @@ function createArrowsArray(stroopCondition: String) {
 			uniqueIndices.Push(index);
 			}
 	}
-
-
 	uniqueIndices.Sort();
-	if (stroopCondition == "cong") {
-		arrowsArray = innerCreationOfArrowsArray(congOptionsVertical, congOptionsHorizontal, incongOptionsVertical,
-					incongOptionsHorizontal, uniqueIndices);
-	}
-	else {
-		arrowsArray = innerCreationOfArrowsArray(incongOptionsVertical, incongOptionsHorizontal, congOptionsVertical,
-			congOptionsHorizontal, uniqueIndices);
-	}
+
+	arrowsArray = innerCreationOfArrowsArray(incongOptionsVertical, incongOptionsHorizontal, congOptionsVertical,
+		congOptionsHorizontal, uniqueIndices);
 
 	return arrowsArray;
 }
 
-function getRingFromArrows(arrows)
-{	
-	var currentRing;
-	if (arrows[0] == "up_pointingUp")	// show up direction arrow in up position
-	{
-		currentRing = "Up";
-	}
-	if (arrows[0] == "up_pointingDown")	// show up direction arrow in down position
-	{
-		currentRing = "Down";
-	}
-	if (arrows[0] == "down_pointingUp")	// show down direction arrow in up position
-	{
-		currentRing = "Up";
-	}
-	if (arrows[0] == "down_pointingDown")	// show down direction arrow in down position
-	{
-		currentRing = "Down";
-	}
-	if (arrows[1] == "left_pointingRight")	// show up direction arrow in up position
-	{
-		currentRing += "Right";
-	}
-	if (arrows[1] == "right_pointingRight")	// show up direction arrow in up position
-	{
-		currentRing += "Right";
-	}
-	if (arrows[1] == "right_pointingLeft")	// show up direction arrow in up position
-	{
-		currentRing += "Left";
-	}
-	if (arrows[1] == "left_pointingLeft")	// show up direction arrow in up position
-	{
-		currentRing += "Left";
-	}
 
-	return currentRing;
-}
-
-
+// The majority and minority parameters to this function are related to congruent and incongruent blocks.
+// If we are in an incongruent block (all of our blocks are incongruent in this version of the task) then
+// the minority of the rings will be congruent and vise versa.
 function innerCreationOfArrowsArray(verticalMajorityOptions, horizontalMajorityOptions, verticalMinorityOptions,
 		horizontalMinorityOptions, uniqueIndices) {
-			var currentUniqueIndex = 0;
 			var arrowsArray = new Array();
-			var currentIndex = 0;
-			var horizontal = Mathf.Floor(Random.Range(0,1.9));
-			var vertical = Mathf.Floor(Random.Range(0,1.9));
+			var currentUniqueIndex = 0;
+			var currentIndexInArrowsArray= 0;
+
+			// Randomaly choose an arrow out of the 2 options we have for each axis
+			var horizontal = Mathf.Floor(Random.Range(0,2));
+			var vertical = Mathf.Floor(Random.Range(0,2));
 			if (uniqueIndices[0] == 0) {
 				arrowsArray.Push(new Array(verticalMinorityOptions[vertical], horizontalMinorityOptions[horizontal]));
 				currentUniqueIndex++;
@@ -265,204 +144,121 @@ function innerCreationOfArrowsArray(verticalMajorityOptions, horizontalMajorityO
 				arrowsArray.Push(new Array(verticalMajorityOptions[vertical], horizontalMajorityOptions[horizontal]));
 			}
 
-			for (currentIndex = 1; currentIndex < arrowsAmount ; currentIndex ++ ) {
+			for (currentIndexInArrowsArray = 1; currentIndexInArrowsArray < arrowsAmount ; currentIndexInArrowsArray ++ ) {
 				var randomSelectionDone = false;
 				while (randomSelectionDone == false) {
-					vertical = Mathf.Floor(Random.Range(0,1.9));
-					horizontal = Mathf.Floor(Random.Range(0,1.9));
+					// Randomaly choose an arrow out of the 2 options we have for each axis
+					vertical = Mathf.Floor(Random.Range(0,2));
+					horizontal = Mathf.Floor(Random.Range(0,2));
 
-
-					if (currentUniqueIndex < uniqueIndices.length && uniqueIndices[currentUniqueIndex] == currentIndex) {
-
-						if (arrowsArray[currentIndex-1][0] != verticalMinorityOptions[vertical]
-							 || arrowsArray[currentIndex-1][1] != horizontalMinorityOptions[horizontal]) {
+					// check if this ring is a minority ring (in our version of the task - that means that this ring is congruent)
+					if (currentUniqueIndex < uniqueIndices.length && uniqueIndices[currentUniqueIndex] == currentIndexInArrowsArray) {
+						// We must not use the same 2 arrows in 2 consecutive rings
+						if (arrowsArray[currentIndexInArrowsArray-1][0] != verticalMinorityOptions[vertical]
+							 || arrowsArray[currentIndexInArrowsArray-1][1] != horizontalMinorityOptions[horizontal]) {
 							randomSelectionDone = true;
-
 							arrowsArray.Push(new Array(verticalMinorityOptions[vertical],
 							horizontalMinorityOptions[horizontal]));
-
 							currentUniqueIndex++;
 						}
 				
 					}
-					else {
-						if (arrowsArray[currentIndex-1][0] != verticalMajorityOptions[vertical]
-							 || arrowsArray[currentIndex-1][1] != horizontalMajorityOptions[horizontal]) {
-								randomSelectionDone = true;
-
+					else {	// this ring is not a minority ring (so in our version of the task - it is incongruent)
+						// We must not use the same 2 arrows in 2 consecutive rings
+						if (arrowsArray[currentIndexInArrowsArray-1][0] != verticalMajorityOptions[vertical]
+							 || arrowsArray[currentIndexInArrowsArray-1][1] != horizontalMajorityOptions[horizontal]) {
+								randomSelectionDone = true;						
 								arrowsArray.Push(new Array(verticalMajorityOptions[vertical],
 								horizontalMajorityOptions[horizontal]));
-	
-						}
-
+						}					
 					}
-
 				}
-
 			}
 			return arrowsArray;
 		}
 
 
-//-----------------------//
-//  UP
-//-----------------------//
 function Start() 
 {	
-	startTime = Time.time;
-	print('startBlock4');
-	print(startTime);
-	firstRingPassed = false;
-	var ob = GameObject.Find("dataSaver");
-	dataSaverScript = ob.GetComponent(dataSaver) as dataSaver; 
-
-	parallelPortScript = dataSaverScript.getParallelsScript();
-
-
-	var audioObjects: Component[];
-	audioObjects = GetComponents(AudioSource);
-
-	controlNbackScript.setPrefabRings(ringPrefab, centerPrefab);
-	controlNbackScript.Start();
-	isPractice = controlNbackScript.isPractice;
-	controlNbackScript.initSounds(audioObjects);
-	nLevel = dataSaverScript.getN();
-
-	blockOrdinal = dataSaverScript.getType();
-	stroopCondition = dataSaverScript.getStroopCondition();
-	condition = dataSaverScript.condition;
-	calibration = dataSaverScript.isCalibration;
-	ringsAmountForCalibrationPhase = dataSaverScript.ringsAmountForCalibrationPhase;
-
-
-	moveSpeed = dataSaverScript.moveSpeed;
-
-	var arrowsArray = createArrowsArray(stroopCondition);
-
-
+	routeFilename = Application.dataPath + "/SSL.txt";
 	// Stop update functions from running while we start up
 	this.enabled = false;
 
-	 // to get constants
-	if (nLevel != "0") {
+	var ob = GameObject.Find("dataSaver");
+	dataSaverScript = ob.GetComponent(dataSaver) as dataSaver; 
+
+	// initialize nBack script
+	var audioObjects: Component[];
+	audioObjects = GetComponents(AudioSource);
+	controlNbackScript.setPrefabRings(prefabLowerRings, prefabUpperRings);
+	controlNbackScript.Start();
+	controlNbackScript.initSounds(audioObjects);
+	lslBCIInputScript = dataSaverScript.getLslScript();
+	controlNbackScript.setLSL (lslBCIInputScript);
+
+	// get this block parameters from dataSaver
+	withFlight = dataSaverScript.getWithFlight();
+	isCalibration = dataSaverScript.isCalibration;
+	ringsAmountForCalibrationPhase = dataSaverScript.ringsAmountForCalibrationPhase;
+	moveSpeed = dataSaverScript.moveSpeed;
+	ringSize = dataSaverScript.getRingSize();
+	currentBlockNumber = dataSaverScript.currentBlockIndex;
+
+	arrowsArray = createArrowsArray();
+
+	if (withFlight == true) {
 		gameObject.AddComponent(Constants);
 		flightScript = gameObject.AddComponent(ControlFlight); // to enable flight controls
 	}
 
+	if (withFlight == true) {
+		/*START - Initialize rings*/
 
-	lslBCIInputScript = dataSaverScript.getLslScript();
-
-	controlNbackScript.setLSL (lslBCIInputScript);
-
-
-
-	// Configure the LSL module according to the values received from LevelLoader
-
-	lslBCIInputScript.LSL_BCI_Recv_FB_Enabled        = LSL_BCI_Recv_FB_Enabled;
-	lslBCIInputScript.LSL_BCI_Send_Markers_Enabled   = LSL_BCI_Send_Markers_Enabled;
-	lslBCIInputScript.LSL_BCI_Send_Feedback_Enabled  = LSL_BCI_Send_Feedback_Enabled;
-	lslBCIInputScript.LSL_BCI_Send_StickMvmt_Enabled = LSL_BCI_Send_StickMvmt_Enabled;
-			
-	// ---------------------------------------------------------
-	
-	//Load Photodiode textures
-	WhiteSquare = Resources.Load("WHITESQUARE");
-	BlackSquare = Resources.Load("BLACKSQUARE");
-
-
-
-	//------- EYELINK
-	// Decide on filename
-	var temp_filename;
-	if (record_EDF_file) {
-		temp_filename = "NEDElast.edf"; //temporary filename on EyeLink computer - must be <=8 characters (not counting .edf)!	
-	} else {
-		temp_filename = ""; //means "do not record an edf file"
-		EDF_filename = ""; //means "do not transfer an StartTracker file to this computer"
-	}
-	
-	ringSize = dataSaverScript.getRingSize();
-	if (nLevel != "0") {
-		 //------- UPPER RIGHT RING LOCATIONS 	
+		//------- UPPER RIGHT RING LOCATIONS 	
 		// Read in ring locations from text file
-	 	var upperRightRingInfo = ReadInPoints(routeFilename, 50.00, 50.00);
+	 	var upperRightRingInfo = ReadInPoints(routeFilename, positivePosition, positivePosition);
 	 	upperRightRingPositions = upperRightRingInfo[0];
-	 	ringWidths = upperRightRingInfo[1];
-	 	
-		// Put rings in scene 	
-		var upperCenterWidths2 = new Array();
-		for(i=0;i<ringWidths.length;i++)
-		{	
-			upperCenterWidths2.Push(10.0);
-		}
 
 	 	//------- LOWER RIGHT RING LOCATIONS 	
 		// Read in ring locations from text file
-	 	var lowerRightRingInfo = ReadInPoints(routeFilename, -50.00, 50.00);
+	 	var lowerRightRingInfo = ReadInPoints(routeFilename, negativePosition, positivePosition);
 	 	lowerRightRingPositions = lowerRightRingInfo[0];
-	 	//lowerRingWidths = lowerRingInfo[1];
-
-		var lowerCenterWidths2 = new Array();
-		for(i=0;i<ringWidths.length;i++)
-		{	
-			lowerCenterWidths2.Push(10.0);
-		}
-
 
 		//------- UPPER LEFT RING LOCATIONS 	
 		// Read in ring locations from text file
-	 	var upperLeftRingInfo = ReadInPoints(routeFilename, 50.00, -50.00);
+	 	var upperLeftRingInfo = ReadInPoints(routeFilename, positivePosition, negativePosition);
 	 	upperLeftRingPositions = upperLeftRingInfo[0];
-	 	ringWidths = upperLeftRingInfo[1];
-	 	
-		// Put rings in scene 	
-		for(i=0;i<ringWidths.length;i++)
-		{	
-			upperCenterWidths2.Push(10.0);
-		}
 
 	 	//------- LOWER LEFT RING LOCATIONS 	
 		// Read in ring locations from text file
-	 	var lowerLeftRingInfo = ReadInPoints(routeFilename, -50.00, -50.00);
+	 	var lowerLeftRingInfo = ReadInPoints(routeFilename, negativePosition, negativePosition);
 	 	lowerLeftRingPositions = lowerLeftRingInfo[0];
-	 	//lowerRingWidths = lowerRingInfo[1];
-
-		for(i=0;i<ringWidths.length;i++)
-		{	
-			lowerCenterWidths2.Push(10.0);
-		}
-
-
-		// Put all rings in scene 
-
-		var centerWidths: float[] = upperCenterWidths2.ToBuiltin(float) as float[]; 
-
 
 		if (ringSize == "big") {
-			width = 90;
+			width = bigRingSize;
 		}
 		else if (ringSize == "medium") {
-			width = 60;
+			width = mediumRingSize;
 		}
 		else {
-			width = 30;
+			width = smallRingSize;
 		}
 
-	 	UpperRightRingArray = PlaceRings(centerPrefab,upperRightRingPositions, width, width, ringDepth, true);
-	 	LowerRightRingArray = PlaceRings(ringPrefab,lowerRightRingPositions, width, width, ringDepth, true);
-	 	UpperLeftRingArray = PlaceRings(centerPrefab,upperLeftRingPositions, width, width, ringDepth, true);
-	 	LowerLeftRingArray = PlaceRings(ringPrefab,lowerLeftRingPositions, width, width, ringDepth, true);
-	 	// RingArray = PlaceRings(ringPrefab,ringPositions, 110, ringWidths, ringDepth, areAllRingsVisible);
-	 	//CenterArray = PlaceRings(centerPrefab,ringPositions, centerWidths, centerWidths, centerDepth, areAllRingsVisible);
-	 	// initialize nextRingBounds
+	 	UpperRightRingArray = PlaceRings(prefabUpperRings,upperRightRingPositions, width, width, ringDepth, true);
+	 	LowerRightRingArray = PlaceRings(prefabLowerRings,lowerRightRingPositions, width, width, ringDepth, true);
+	 	UpperLeftRingArray = PlaceRings(prefabUpperRings,upperLeftRingPositions, width, width, ringDepth, true);
+	 	LowerLeftRingArray = PlaceRings(prefabLowerRings,lowerLeftRingPositions, width, width, ringDepth, true);
+
 	 	nextUpperRightRingBounds = ObjectInfo.ObjectBounds(UpperRightRingArray[iNextRing].gameObject);
 	 	nextLowerRightRingBounds = ObjectInfo.ObjectBounds(LowerRightRingArray[iNextRing].gameObject);
 	 	nextUpperLeftRingBounds = ObjectInfo.ObjectBounds(UpperLeftRingArray[iNextRing].gameObject);
 	 	nextLowerLeftRingBounds = ObjectInfo.ObjectBounds(LowerLeftRingArray[iNextRing].gameObject);
 
- 	//------- FLIGHT CONTROLS 	
- 	// pass parameters to flight control script
+	 	/*END - Initialize rings*/
 
+
+	 	//------- FLIGHT CONTROLS 	
+	 	// pass parameters to flight control script
 	 	flightScript.speed = moveSpeed;
 	 	flightScript.pitchSpeed = pitchSpeed;
 	 	flightScript.lockRoll = lockRoll;
@@ -476,14 +272,14 @@ function Start()
 		flightScript.filterUpTime = filterUpTime;
 		flightScript.filterDownTime = filterDownTime;
 	}
+
 	// Try to pause to allow to start recording!
 	crossScript.Show();
 	yield WaitForSeconds(3);
-	controlNbackScript.setStartMarker ();
-	currentBlockNumber = dataSaverScript.currentBlockIndex;
-	// Changed, FJ, 20160403 - Send start marker with condition
 
-	if (nLevel == "0") {
+	controlNbackScript.setStartMarker ();
+
+	if (withFlight == false) {
 		crossScript.Show();
 		return;
 	}
@@ -493,70 +289,40 @@ function Start()
 	flightScript.setSpeed(moveSpeed);
 	flightScript.StartFlight(controlNbackScript);
 
-
+	// Place first ring's arrows
 	SwitchArrowIfNeeded(iNextRing);
 	changeCrossPositionIfNeeded(nextUpperLeftRingBounds.center, nextLowerLeftRingBounds.center,
  		nextUpperRightRingBounds.center, nextLowerRightRingBounds.center);
-	
-	//controlNbackScript.startNback();
 
-
-
-
-
-	// Set trial end time
-	trialEndTime = Time.time + trialTime;
-	
-	// allow update functions to run again
+	// Enable update functions again
 	this.enabled = true;
 }
 
 function Update() {
-	if (nLevel == "0") {
+	if (withFlight == false) {
 		return;
 	}
 
+	// send locations of plane and rings to lsl stream
 	lslBCIInputScript.sendFlightParams ( transform.position.x, transform.position.y, transform.position.z, 
 	nextUpperRightRingBounds.center.x, nextUpperRightRingBounds.center.y, 
 	nextUpperLeftRingBounds.center.x,  nextUpperLeftRingBounds.center.y,
 	nextLowerRightRingBounds.center.x, nextLowerRightRingBounds.center.y, 
 	nextLowerLeftRingBounds.center.x, nextLowerLeftRingBounds.center.y);
 
-
 	// Check if subject has passed the next ring
 	if (transform.position.z > nextUpperRightRingBounds.center.z) 
 	{
-		var ringBounds = null;
-		if (currentRing == "UpRight") {
-			ringBounds = nextUpperRightRingBounds;
-		}
-		else if (currentRing == "UpLeft") {
-			ringBounds = nextUpperLeftRingBounds;
-		}
-		else if (currentRing == "DownRight") {
-			ringBounds = nextLowerRightRingBounds;
-		}
-		else {
-			ringBounds = nextLowerLeftRingBounds;
-		}
-
+		var ringBounds = getCurrentRingBounds();
 		checkIfRingFailedAndSendTrigggers(ringBounds);
 		iNextRing++;
 
+		// Update speed if needed
 		if(dataSaverScript.getIsCalibration() && (iNextRing % ringsAmountForCalibrationPhase) == 0) {
 			moveSpeed = controlNbackScript.getSpeed();
 			flightScript.speed = moveSpeed;
 		}
 
-		if (iNextRing >= arrowsArray.length) {
-			iNextRing = 0;
-		}
-
-		SwitchArrowIfNeeded(iNextRing);
-
-		 // increment the ring number
-		ChangeVisibility(UpperRightRingArray[iNextRing],true);
-		ChangeVisibility(LowerRightRingArray[iNextRing],true);
 		nextUpperRightRingBounds = ObjectInfo.ObjectBounds(UpperRightRingArray[iNextRing].gameObject); // get new ring bounds
 		nextLowerRightRingBounds = ObjectInfo.ObjectBounds(LowerRightRingArray[iNextRing].gameObject); // get new ring bounds
 		nextUpperLeftRingBounds = ObjectInfo.ObjectBounds(UpperLeftRingArray[iNextRing].gameObject); // get new ring bounds
@@ -565,51 +331,43 @@ function Update() {
 		changeCrossPositionIfNeeded(nextUpperLeftRingBounds.center, nextLowerLeftRingBounds.center,
 		 nextUpperRightRingBounds.center, nextLowerRightRingBounds.center);
 
-		firstRingPassed = true;
-		endTime = Time.time;
-		print('EndBlock4');
-		print(endTime);
-		startTrialTime = Time.time;
+		SwitchArrowIfNeeded(iNextRing);
 	}
+}
+
+function getCurrentRingBounds() {
+	var ringBounds = null;
+	if (currentRing == "UpRight") {
+		ringBounds = nextUpperRightRingBounds;
+	}
+	else if (currentRing == "UpLeft") {
+		ringBounds = nextUpperLeftRingBounds;
+	}
+	else if (currentRing == "DownRight") {
+		ringBounds = nextLowerRightRingBounds;
+	}
+	else {
+		ringBounds = nextLowerLeftRingBounds;
+	}
+	return ringBounds;
 }
 
 function checkIfRingFailedAndSendTrigggers(ringBounds) {
 	if (transform.position.y < ringBounds.min.y || transform.position.y > ringBounds.max.y  ||
 		transform.position.x < ringBounds.min.x || transform.position.x > ringBounds.max.x)
 	{
-
-		//lslBCIInputScript.setMarker (currentRing + "Fail_Size_" + Mathf.Abs(ringBounds.max.y - ringBounds.min.y));
-		var ringSize = Mathf.Abs(ringBounds.max.y - ringBounds.min.y);
 		lslBCIInputScript.setMarker("ring_passed_0");	
-
 		controlNbackScript.setRingFailure();
-
-
-		return true;
 	}
 	else {
-
-		sendTriggerRingPassed(ringBounds);
-		controlNbackScript.setRingSuccess();
-		return false;
-	}
-}
-
-function sendTriggerRingPassed(ringBounds) {
-	if (iNextRing <= ( LowerRightRingArray.length-1 ) )
-	{
-		var ringSize = Mathf.Abs(ringBounds.max.y - ringBounds.min.y);
 		lslBCIInputScript.setMarker("ring_passed_1");
-
+		controlNbackScript.setRingSuccess();
 	}
 }
-
-
 
 function setMarkerForControlFlight ( sMarkerName : String )
 {
 	lslBCIInputScript.setMarker(sMarkerName);
-
 }
 
 function setMarkerForPitch ( fNewPitch : double )
@@ -624,6 +382,7 @@ function setMarkerForYaw ( fNewPitch : double )
 
 }
 
+// Show cross in the correct ring if we are in a baseline condition
 function changeCrossPositionIfNeeded(leftUpper, leftLower, rightUpper, rightLower) {
 	if (!dataSaverScript.getIsBaseline()) {
 		crossScript.Hide();
@@ -645,6 +404,7 @@ function changeCrossPositionIfNeeded(leftUpper, leftLower, rightUpper, rightLowe
 	}
 
 }
+
 
 function SwitchArrowIfNeeded(ringIndex)
 {	
@@ -740,63 +500,6 @@ function SwitchArrowIfNeeded(ringIndex)
 			lslBCIInputScript.setMarker("arrow_location_l_direction_l");
 		}
 	}
-
-
-}
-
-//---END THE LEVEL AND DO CLEANUP
-//This function is called during the Update function, or by a helper script.
-function EndLevel() 
-{
-	// Changed, FJ, 20160403 - Send start marker with condition
-	lslBCIInputScript.setMarker ("runEnd");
-	// --------------------------------------------------------
-
-	if(UpperRightRingArray && UpperRightRingArray.length > 0) {
-	//Compute Performance
-		courseCompleted = ((iNextRing)*100/UpperRightRingArray.length);
-	}
-
-	if (ringAccuracy) {
-		var sum = 0;
-		for (var i=0; i<ringAccuracy.length; i++) 
-		{ 
-			sum += ringAccuracy[i];
-		}
-		
-		if (ringAccuracy.length>0) 
-		{
-			courseAccuracy = 100 - sum/ringAccuracy.length;
-		} 
-		else 
-		{
-			courseAccuracy = 0;
-		}
-	}
-
-																		
-	//disable updates
-	this.enabled=false;
-	if(flightScript) {
-		flightScript.enabled = false;
-	}
-
-	if (dataSaverScript.getIsPractice() == true) {
-		dataSaverScript.updateBlockIndex();
-		SceneManagement.SceneManager.LoadScene ("successRates");
-	}
-	else {
-		dataSaverScript.updateBlockIndex();	
-		SceneManagement.SceneManager.LoadScene ("stress_evaluation");
-	}
-
-}
-
-//---END THE LEVEL MANUALLY
-//This program is called if the user ends the level by pressing the play button or closing the window
-function OnApplicationQuit() 
-{ 
-	EndLevel(); //Still do cleanup/exit script so our data is saved properly.
 }
 
 
@@ -829,8 +532,6 @@ function ReadInPoints(fileName: String, heightToAdd: float, horizontalToAdd: flo
 	       	var zStr = valSegs[2];
 
 	       	var widthString = valSegs[3];
-	       	// TRACING of raw (x,y,z)
-//	      	Debug.Log("xStr: " + xStr + ", yStr: " + yStr + ", zStr: " + zStr);
 	       	txtPoints.Push(Vector3(float.Parse(xStr)+horizontalToAdd,float.Parse(yStr)+heightToAdd,float.Parse(zStr)));
 	       	txtWidths.Push(float.Parse(widthString));
 		}
@@ -842,72 +543,19 @@ function ReadInPoints(fileName: String, heightToAdd: float, horizontalToAdd: flo
 }
 
 
-
 //-----------------------//
-// Place rings at given points and log their positions
+// Place rings at given points
 //-----------------------//
 function PlaceRings(prefabObj: Transform, positions: Vector3[], ringWidth: float, ringHeight: float, ringDepthConstant: float, isVisible: boolean) {
-
-
 	AllRings = new Array();
 	for (i=0;i<positions.length;i++) {
-		//renderer = prefabObj.GetComponent('Renderer').material.color = color;
-		//eyelinkScript.write("Created Object # " + (i+1) + " Ring Ring Ring " + positions[i] + " (" + ringWidth + ", " + ringHeight + ", " + ringDepth + ", 0)"); //"Ring Ring Ring" 
-		thisRing = Instantiate(prefabObj, positions[i], Quaternion.identity); // place ring in sceneindicates name/type/tag are all "Ring"
-
-		//renderer.material.color.r = color.r;
-		//renderer.material.color.g = color.g;
-		//renderer.material.color.b = color.b;
-		thisRing.transform.localScale = Vector3(ringWidth,ringHeight,ringDepthConstant); // scale to match specified width/height/depth
-		ChangeVisibility(thisRing,isVisible);
-		AllRings.Push(thisRing); // keep track of rings in scene
+		thisRing = Instantiate(prefabObj, positions[i], Quaternion.identity);
+		thisRing.transform.localScale = Vector3(ringWidth,ringHeight,ringDepthConstant);
+		AllRings.Push(thisRing);
 	}
-	//eyelinkScript.write("----- START TRIAL -----");
 	return AllRings;
 }
 
-//-----------------------//
-// Make an object visible or invisible
-//-----------------------//
-function ChangeVisibility(thisObject: Object, makeVisible: boolean)  { 
-	var renderers = thisObject.GetComponentsInChildren(MeshRenderer);
-	var success = 0;
-	if (renderers!=null && renderers.length>0) {
-		for (var thisRenderer : MeshRenderer in renderers) {
-			thisRenderer.enabled = makeVisible;
-		}
-		success = 1;
-	} 
-	return success;
-	
-	
-}
-
-//-----------------------//
-// Place photodiode square in upper right corner
-//-----------------------//
-function OnGUI () {
-	if (isPhotodiodeUsed) { // only if subject asked for photodiode square
-		//toggle color of square
-		if (portIsSync) {
-			GUI.DrawTexture(Rect(Screen.width-photodiodeSize,-3,photodiodeSize,photodiodeSize), WhiteSquare, ScaleMode.ScaleToFit, false);
-		} else {
-			GUI.DrawTexture(Rect(Screen.width-photodiodeSize,-3,photodiodeSize,photodiodeSize), BlackSquare, ScaleMode.ScaleToFit, false);
-		}
-	}
-}
-
-
-
-//-----------------------//
-// Log Positions
-//-----------------------//
 function LateUpdate () {
 
-	if (nLevel == "0") {
-		
-		return;
-	}
-
-	
 }

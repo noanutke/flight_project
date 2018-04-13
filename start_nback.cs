@@ -142,7 +142,7 @@ public class start_nback : MonoBehaviour {
 			string nLevel = this.levelInput.text == ""? "1" : this.levelInput.text;
 			bool isPractice = true;
 
-			dataSaver.initBlock (condition, speed, subjectNumber, nLevel, ringSize, withNBack, isPractice, isCalibration,
+			dataSaver.initSingleNonTestBlock (condition, speed, nLevel, ringSize, withNBack, isPractice, isCalibration,
 				ringsFailuresForCalibrationTarget);
 
 		}

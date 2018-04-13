@@ -11,7 +11,6 @@ public class reportCalibrationResults : MonoBehaviour {
 		if (loadCanvas) {
 			loadCanvas.SetActive(false);
 		}
-
 		GameObject emptyObject =  GameObject.Find("dataSaver");
 		dataSaver dataSaver = emptyObject.GetComponent<dataSaver> ();
 		int speed = dataSaver.moveSpeed;
@@ -19,8 +18,6 @@ public class reportCalibrationResults : MonoBehaviour {
 		GameObject speedValue = GameObject.Find ("speedValue");
 
 		UnityEngine.UI.Text speedValueText =  speedValue.GetComponent<UnityEngine.UI.Text> ();
-
-
 		speedValueText.text = speed.ToString ();
 
 	}

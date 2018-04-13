@@ -4,7 +4,13 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
 public class histogram_x : MonoBehaviour {
-
+	
+	float right_column_x_position = 5.3f;
+	float distance_between_columns = 1.08f;
+	int highest_column_index = 9;
+	float y_position_for_x_marker = -2.0f;
+	float z_position_for_x_marker = 0.0f;
+		
 	void Start () {
 		StartCoroutine(ChangePosition());
 	}
@@ -14,22 +20,23 @@ public class histogram_x : MonoBehaviour {
 	}
 
 	IEnumerator ChangePosition() {
+		
 		GameObject emptyObject =  GameObject.Find("dataSaver");
 		dataSaver dataSaver = emptyObject.GetComponent<dataSaver> ();
-		int orderInt = dataSaver.columnInHistogram;
+		int columnInHistogram = dataSaver.columnInHistogram;
 		LSL_BCI_Input lslScript = dataSaver.getLslScript ();
 
-		lslScript.setMarker ("score_score_" + orderInt.ToString ());
+		lslScript.setMarker ("score_score_" + columnInHistogram.ToString ());
 
-		Vector3 vec = new Vector3(0.0f, -2.0f, 0.0f);
-		vec.x = 5.3f - 1.08f * (10f - orderInt - 1);
+		float x_position = this.right_column_x_position - this.distance_between_columns * (this.highest_column_index -
+			columnInHistogram );
+		Vector3 vec = new Vector3(x_position, this.y_position_for_x_marker, this.z_position_for_x_marker);
 		transform.localPosition = vec;
 
 		yield return new WaitForSeconds (9);
 		int blockIndex = dataSaver.currentBlockIndex - 1;
 		if (blockIndex == dataSaver.halfConditionIndex ||
-			blockIndex == dataSaver.fullConditionIndex){
-	
+			blockIndex == dataSaver.fullConditionIndex){	
 				SceneManager.LoadScene ("stress_evaluation");
 		}
 		else {
