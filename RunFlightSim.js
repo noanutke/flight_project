@@ -129,53 +129,55 @@ function createArrowsArray() {
 // the minority of the rings will be congruent and vise versa.
 function innerCreationOfArrowsArray(verticalMajorityOptions, horizontalMajorityOptions, verticalMinorityOptions,
 		horizontalMinorityOptions, uniqueIndices) {
-			var arrowsArray = new Array();
-			var currentUniqueIndex = 0;
-			var currentIndexInArrowsArray= 0;
+		var arrowsArray = new Array();
+		var currentUniqueIndex = 0;
+		var currentIndexInArrowsArray= 0;
 
-			// Randomaly choose an arrow out of the 2 options we have for each axis
-			var horizontal = Mathf.Floor(Random.Range(0,2));
-			var vertical = Mathf.Floor(Random.Range(0,2));
-			if (uniqueIndices[0] == 0) {
-				arrowsArray.Push(new Array(verticalMinorityOptions[vertical], horizontalMinorityOptions[horizontal]));
-				currentUniqueIndex++;
-			}
-			else {
-				arrowsArray.Push(new Array(verticalMajorityOptions[vertical], horizontalMajorityOptions[horizontal]));
-			}
+		// Randomaly choose an arrow out of the 2 options we have for each axis
+		var horizontal = Mathf.Floor(Random.Range(0,2));
+		var vertical = Mathf.Floor(Random.Range(0,2));
+		if (uniqueIndices[0] == 0) {
+			arrowsArray.Push(new Array(verticalMinorityOptions[vertical], horizontalMinorityOptions[horizontal]));
+			currentUniqueIndex++;
+		}
+		else {
+			arrowsArray.Push(new Array(verticalMajorityOptions[vertical], horizontalMajorityOptions[horizontal]));
+		}
 
-			for (currentIndexInArrowsArray = 1; currentIndexInArrowsArray < arrowsAmount ; currentIndexInArrowsArray ++ ) {
-				var randomSelectionDone = false;
-				while (randomSelectionDone == false) {
-					// Randomaly choose an arrow out of the 2 options we have for each axis
-					vertical = Mathf.Floor(Random.Range(0,2));
-					horizontal = Mathf.Floor(Random.Range(0,2));
+		for (currentIndexInArrowsArray = 1; currentIndexInArrowsArray < arrowsAmount ; currentIndexInArrowsArray ++ ) {
+			var randomSelectionDone = false;
+			while (randomSelectionDone == false) {
+				// Randomaly choose an arrow out of the 2 options we have for each axis
+				vertical = Mathf.Floor(Random.Range(0,2));
+				horizontal = Mathf.Floor(Random.Range(0,2));
 
-					// check if this ring is a minority ring (in our version of the task - that means that this ring is congruent)
-					if (currentUniqueIndex < uniqueIndices.length && uniqueIndices[currentUniqueIndex] == currentIndexInArrowsArray) {
-						// We must not use the same 2 arrows in 2 consecutive rings
-						if (arrowsArray[currentIndexInArrowsArray-1][0] != verticalMinorityOptions[vertical]
-							 || arrowsArray[currentIndexInArrowsArray-1][1] != horizontalMinorityOptions[horizontal]) {
+				// check if this ring is a minority ring (in our version of the task - that means that this ring is congruent)
+				if (currentUniqueIndex < uniqueIndices.length && uniqueIndices[currentUniqueIndex] == currentIndexInArrowsArray) {
+					// We must not use the same 2 arrows in 2 consecutive rings
+					if (updateRingFromArrow(arrowsArray[currentIndexInArrowsArray-1]) != 
+						updateRingFromArrow(new Array(verticalMinorityOptions[vertical],
+						horizontalMinorityOptions[horizontal]))) {
 							randomSelectionDone = true;
 							arrowsArray.Push(new Array(verticalMinorityOptions[vertical],
 							horizontalMinorityOptions[horizontal]));
 							currentUniqueIndex++;
-						}
-				
 					}
-					else {	// this ring is not a minority ring (so in our version of the task - it is incongruent)
-						// We must not use the same 2 arrows in 2 consecutive rings
-						if (arrowsArray[currentIndexInArrowsArray-1][0] != verticalMajorityOptions[vertical]
-							 || arrowsArray[currentIndexInArrowsArray-1][1] != horizontalMajorityOptions[horizontal]) {
-								randomSelectionDone = true;						
-								arrowsArray.Push(new Array(verticalMajorityOptions[vertical],
-								horizontalMajorityOptions[horizontal]));
-						}					
-					}
+			
+				}
+				else {	// this ring is not a minority ring (so in our version of the task - it is incongruent)
+					// We must not use the same 2 arrows in 2 consecutive rings
+					if (updateRingFromArrow(arrowsArray[currentIndexInArrowsArray-1]) != 
+						updateRingFromArrow(new Array(verticalMajorityOptions[vertical],
+						horizontalMajorityOptions[horizontal]))) {
+							randomSelectionDone = true;						
+							arrowsArray.Push(new Array(verticalMajorityOptions[vertical],
+							horizontalMajorityOptions[horizontal]));
+					}					
 				}
 			}
-			return arrowsArray;
 		}
+		return arrowsArray;
+}
 
 
 function Start() 
@@ -207,7 +209,6 @@ function Start()
 	arrowsArray = createArrowsArray();
 
 	if (withFlight == true) {
-		gameObject.AddComponent(Constants);
 		flightScript = gameObject.AddComponent(ControlFlight); // to enable flight controls
 	}
 
@@ -290,6 +291,7 @@ function Start()
 	flightScript.StartFlight(controlNbackScript);
 
 	// Place first ring's arrows
+	updateRingFromArrow(arrowsArray[iNextRing]);
 	SwitchArrowIfNeeded(iNextRing);
 	changeCrossPositionIfNeeded(nextUpperLeftRingBounds.center, nextLowerLeftRingBounds.center,
  		nextUpperRightRingBounds.center, nextLowerRightRingBounds.center);
@@ -328,10 +330,12 @@ function Update() {
 		nextUpperLeftRingBounds = ObjectInfo.ObjectBounds(UpperLeftRingArray[iNextRing].gameObject); // get new ring bounds
 		nextLowerLeftRingBounds = ObjectInfo.ObjectBounds(LowerLeftRingArray[iNextRing].gameObject);
 
+		updateRingFromArrow(arrowsArray[iNextRing]);
+		SwitchArrowIfNeeded(iNextRing);
 		changeCrossPositionIfNeeded(nextUpperLeftRingBounds.center, nextLowerLeftRingBounds.center,
 		 nextUpperRightRingBounds.center, nextLowerRightRingBounds.center);
 
-		SwitchArrowIfNeeded(iNextRing);
+		
 	}
 }
 
@@ -405,6 +409,41 @@ function changeCrossPositionIfNeeded(leftUpper, leftLower, rightUpper, rightLowe
 
 }
 
+function updateRingFromArrow(currentArrow) {
+	if (currentArrow[0] == "up_pointingUp")	// show up direction arrow in up position
+	{
+		currentRing = "Up";
+	}
+	if (currentArrow[0] == "up_pointingDown")	// show up direction arrow in down position
+	{
+		currentRing = "Down";
+	}
+	if (currentArrow[0] == "down_pointingUp")	// show down direction arrow in up position
+	{
+		currentRing = "Up";
+	}
+	if (currentArrow[0] == "down_pointingDown")	// show down direction arrow in down position
+	{
+		currentRing = "Down";
+	}
+	if (currentArrow[1] == "left_pointingRight")	// show up direction arrow in up position
+	{
+		currentRing += "Right";
+	}
+	if (currentArrow[1] == "right_pointingRight")	// show up direction arrow in up position
+	{
+		currentRing += "Right";
+	}
+	if (currentArrow[1] == "right_pointingLeft")	// show up direction arrow in up position
+	{
+		currentRing += "Left";
+	}
+	if (currentArrow[1] == "left_pointingLeft")	// show up direction arrow in up position
+	{
+		currentRing += "Left";
+	}
+	return currentRing;
+}
 
 function SwitchArrowIfNeeded(ringIndex)
 {	
@@ -414,7 +453,6 @@ function SwitchArrowIfNeeded(ringIndex)
 	currentArrow = arrowsArray[ringIndex];
 	if (currentArrow[0] == "up_pointingUp")	// show up direction arrow in up position
 	{
-		currentRing = "Up";
 		if (!dataSaverScript.getIsBaseline()) {
 			position = Vector3(0.0,10.0,0.0);
 			upArrowDirecionScript.ChangePosition(position);
@@ -425,7 +463,6 @@ function SwitchArrowIfNeeded(ringIndex)
 	}
 	if (currentArrow[0] == "up_pointingDown")	// show up direction arrow in down position
 	{
-		currentRing = "Down";
 		if (!dataSaverScript.getIsBaseline()) {
 			position = Vector3(0.0,10.0,0.0);
 			downArrowDirecionScript.ChangePosition(position);
@@ -436,7 +473,6 @@ function SwitchArrowIfNeeded(ringIndex)
 	}
 	if (currentArrow[0] == "down_pointingUp")	// show down direction arrow in up position
 	{
-		currentRing = "Up";
 		if (!dataSaverScript.getIsBaseline()) {
 			position = Vector3(0.0,-10.0,0.0);
 			upArrowDirecionScript.ChangePosition(position);
@@ -447,7 +483,6 @@ function SwitchArrowIfNeeded(ringIndex)
 	}
 	if (currentArrow[0] == "down_pointingDown")	// show down direction arrow in down position
 	{
-		currentRing = "Down";
 		if (!dataSaverScript.getIsBaseline()) {
 			position = Vector3(0.0,-10.0,0.0);
 			downArrowDirecionScript.ChangePosition(position);
@@ -458,7 +493,6 @@ function SwitchArrowIfNeeded(ringIndex)
 	}
 	if (currentArrow[1] == "left_pointingRight")	// show up direction arrow in up position
 	{
-		currentRing += "Right";
 		if (!dataSaverScript.getIsBaseline()) {
 			position = Vector3(-15,0,0.0);
 			rightArrowDirecionScript.ChangePosition(position);
@@ -469,7 +503,6 @@ function SwitchArrowIfNeeded(ringIndex)
 	}
 	if (currentArrow[1] == "right_pointingRight")	// show up direction arrow in up position
 	{
-		currentRing += "Right";
 		if (!dataSaverScript.getIsBaseline()) {
 			position = Vector3(15,0,0.0);
 			rightArrowDirecionScript.ChangePosition(position);
@@ -480,7 +513,6 @@ function SwitchArrowIfNeeded(ringIndex)
 	}
 	if (currentArrow[1] == "right_pointingLeft")	// show up direction arrow in up position
 	{
-		currentRing += "Left";
 		if (!dataSaverScript.getIsBaseline()) {
 			position = Vector3(15,0,0.0);
 			leftArrowDirecionScript.ChangePosition(position);
@@ -491,7 +523,6 @@ function SwitchArrowIfNeeded(ringIndex)
 	}
 	if (currentArrow[1] == "left_pointingLeft")	// show up direction arrow in up position
 	{
-		currentRing += "Left";
 		if (!dataSaverScript.getIsBaseline()) {
 			position = Vector3(-15,0,0.0);
 			leftArrowDirecionScript.ChangePosition(position);

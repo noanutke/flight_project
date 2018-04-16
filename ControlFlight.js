@@ -51,7 +51,6 @@ var initialPos = Vector3(0.0, 1000.0, -1000.0);
 var firstRingPos = Vector3(0.0, 1000.0, 0.0);
 
 // PRIVATE VARIABLES
-private var eyelinkScript; //gets eye position and records messages
 private var runFlightScript; // to end session
 private var doWindow = false; // opens GUI to set filter params
 private var isInFlight = false; // in flight (controls enabled), or in takeoff?
@@ -85,8 +84,7 @@ function StartFlight(controlNbackScript)
 	//transform_Arrows =  arrows.GetComponent(Transform) as Transform;
 	//initialPosArrows = transform_Arrows.position;
 	nBackScript = controlNbackScript;
-	// Get eyelink script for logging	
-	eyelinkScript = gameObject.GetComponent(eyelink); //gets eye position and records messages
+
 	runFlightScript = gameObject.GetComponent(RunFlightSim); //gets eye position and records messages
 	
 	// CHANGED, FJ, 2015-05-11
@@ -114,7 +112,7 @@ function StartFlight(controlNbackScript)
 	drift = 0.0;//GetNewDrift(driftAmplitude);
 	lastDriftChange = 0.0;
 	// log new drift
-//	eyelinkScript.write("Drift = " + drift);
+
 
 	// Set initial plane position
 	transform.position = initialPos;
@@ -287,10 +285,7 @@ function Update()
 function GetNewDrift(driftAmp: float) 
 {
 	newDrift = driftAmp*(Random.value-0.5); // uniform distribution
-	// log new drift
-	if (eyelinkScript) {
-		eyelinkScript.write("Drift = " + newDrift);
-	}
+
 	return newDrift;
 }
 

@@ -355,7 +355,18 @@ function readNextLetter() {
 
 
 function Update () {
-
+    if(Input.GetKeyDown(KeyCode.JoystickButton0)){
+    	nbackButtonPressed(0);
+    }
+    else if(Input.GetKeyDown(KeyCode.JoystickButton1)){
+    	nbackButtonPressed(1);
+    }
+    else if(Input.GetKeyDown(KeyCode.JoystickButton2)){
+    	nbackButtonPressed(2);
+    }
+    else if(Input.GetKeyDown(KeyCode.JoystickButton3)){
+    	nbackButtonPressed(3);
+    }
 }
 
 function getAudioObjectForFileName(objects: Component[], name: String) {
