@@ -164,7 +164,7 @@ public class loadEvaluation : MonoBehaviour {
 		// If get here if no key was pressed, so we check for change in joystick horizontal axis
 		var movement = Input.GetAxis ("Horizontal");
 		if (currentItemIndex < itemsNumber) {
-			items[currentItemIndex].value += movement/2;// we devide the movement by half to make the movement more delecate
+			items[currentItemIndex].value += movement/8;// we devide the movement by half to make the movement more delecate
 		}
 
 	}

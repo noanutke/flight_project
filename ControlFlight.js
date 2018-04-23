@@ -135,21 +135,7 @@ function Update()
 	if (this.enabled == false) {
 		return;
 	}
-	var input = Input.touches;
-	var names = Input.GetJoystickNames();
 
-    if(Input.GetKeyDown(KeyCode.JoystickButton0)){
-    	nBackScript.nbackButtonPressed(0);
-    }
-    else if(Input.GetKeyDown(KeyCode.JoystickButton1)){
-    	nBackScript.nbackButtonPressed(1);
-    }
-    else if(Input.GetKeyDown(KeyCode.JoystickButton2)){
-    	nBackScript.nbackButtonPressed(2);
-    }
-    else if(Input.GetKeyDown(KeyCode.JoystickButton3)){
-    	nBackScript.nbackButtonPressed(3);
-    }
 	// Move forward	
 	transform.Translate(Vector3.forward*Time.deltaTime*speed);
 	//transform_Arrows.Translate(Vector3.forward*Time.deltaTime*speed);
